@@ -1,11 +1,9 @@
-# aicode-ratio
-
 <p align="center">
   <a href="https://github.com/ricoNext/aicode-ratio">
     <picture>
-      <source srcset="logo.jpeg" media="(prefers-color-scheme: dark)">
-      <source srcset="logo-light.jpeg" media="(prefers-color-scheme: light)">
-      <img src="logo.jpeg" alt="aicode-ratio logo">
+      <source srcset="https://neptune-ipc.oss-cn-shenzhen.aliyuncs.com/img/20260508180600224.png" media="(prefers-color-scheme: dark)">
+      <source srcset="https://neptune-ipc.oss-cn-shenzhen.aliyuncs.com/img/20260508180640682.png" media="(prefers-color-scheme: light)">
+      <img src="https://neptune-ipc.oss-cn-shenzhen.aliyuncs.com/img/20260508180600224.png" alt="aicode-ratio logo">
     </picture>
   </a>
 </p>
