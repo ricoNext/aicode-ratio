@@ -15,9 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 版本与 package.json 的 packageManager（pnpm@x.y.z）一致，勿在此再写 version，否则会与 action-setup 冲突
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
