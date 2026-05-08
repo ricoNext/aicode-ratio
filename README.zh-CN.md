@@ -1,4 +1,19 @@
-# aicode-ratio
+<p align="center">
+  <a href="https://github.com/ricoNext/aicode-ratio">
+    <picture>
+      <source srcset="logo.jpeg" media="(prefers-color-scheme: dark)">
+      <source srcset="logo-light.jpeg" media="(prefers-color-scheme: light)">
+      <img src="logo.jpeg" alt="aicode-ratio logo">
+    </picture>
+  </a>
+</p>
+
+<p align="center">一个统计 AI agent 的代码变更与手写代码变更的比率（AI Code Ratio）的命令行工具</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/aicode-ratio"><img alt="npm" src="https://img.shields.io/pnpm/v/aicode-ratio?style=flat-square" /></a>
+  <a href="https://github.com/ricoNext/aicode-ratio/actions/workflows/publish-npm.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/ricoNext/aicode-ratio/publish-npm.yml?style=flat-square&amp;branch=main" /></a>
+</p>
 
 [English](README.md)
 
