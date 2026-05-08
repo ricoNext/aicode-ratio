@@ -1,6 +1,6 @@
 /**
  * aicode-ratio-append-log.mjs
- * Version: 0.5.0 (aicode-ratio)
+ * Version: 0.7.2 (aicode-ratio)
  *
  * argv[2] mode:
  *   - Cursor: "agent" | "tab"
@@ -11,7 +11,7 @@
  * Copied into `.cursor/hooks/`, `.codebuddy/hooks/`, `.claude/hooks/`, and `.qoder/hooks/` by `aicode-ratio init`.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve as resolvePath, sep } from 'node:path';
@@ -62,6 +62,7 @@ function loadConfig(repoRoot) {
   const out = {
     logPath: DEFAULT_LOG_REL,
     ignoreLogPathPrefixes: DEFAULT_IGNORE_PREFIXES,
+    teamMode: false,
   };
   const paths = [join(repoRoot, '.aicode-ratio.json'), join(repoRoot, '.cursor-attribution.json')];
   for (const p of paths) {
@@ -70,6 +71,7 @@ function loadConfig(repoRoot) {
       const j = JSON.parse(readFileSync(p, 'utf8'));
       if (typeof j.logPath === 'string' && j.logPath.length) out.logPath = j.logPath;
       if (Array.isArray(j.ignoreLogPathPrefixes)) out.ignoreLogPathPrefixes = j.ignoreLogPathPrefixes;
+      if (typeof j.teamMode === 'boolean') out.teamMode = j.teamMode;
       break;
     } catch {
       // try next
@@ -78,12 +80,72 @@ function loadConfig(repoRoot) {
   return out;
 }
 
+/** Keep in sync with `src/util/user-log-slug.ts`. */
+function userLogFilenameSlug(gu) {
+  const email = gu && typeof gu.email === 'string' ? gu.email.trim() : '';
+  const name = gu && typeof gu.name === 'string' ? gu.name.trim() : '';
+  const raw = email || name || '';
+  if (!raw) return '_unknown';
+  const slug = raw
+    .replace(/[^a-zA-Z0-9._@-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  const safe = slug.length ? slug : '_unknown';
+  return safe.length > 120 ? safe.slice(0, 120) : safe;
+}
+
+function resolveLogAbsPath(repoRootAbs, cfg) {
+  if (!cfg.teamMode) {
+    return join(repoRootAbs, cfg.logPath);
+  }
+  const gu = gitLocalUser(repoRootAbs);
+  const slug = userLogFilenameSlug(gu);
+  const dir = join(repoRootAbs, '.aicode-ratio', 'logs');
+  mkdirSync(dir, { recursive: true });
+  return join(dir, `${slug}.jsonl`);
+}
+
 function gitTopLevel(cwd) {
   try {
     return execSync('git rev-parse --show-toplevel', { cwd, encoding: 'utf8' }).trim();
   } catch {
     return null;
   }
+}
+
+/**
+ * Local `git config user.*` for this repo (who ran the editor / hook).
+ * Cached per `repoRoot` for the lifetime of this Node process (typical hook = one process;
+ * still avoids duplicate reads if one invocation ever asks twice).
+ */
+const gitLocalUserByRepoRoot = new Map();
+
+function gitLocalUser(repoRoot) {
+  if (gitLocalUserByRepoRoot.has(repoRoot)) {
+    return gitLocalUserByRepoRoot.get(repoRoot);
+  }
+  let name;
+  let email;
+  try {
+    name = execFileSync('git', ['-C', repoRoot, 'config', '--get', 'user.name'], {
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // unset
+  }
+  try {
+    email = execFileSync('git', ['-C', repoRoot, 'config', '--get', 'user.email'], {
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // unset
+  }
+  const out = {};
+  if (name) out.name = name;
+  if (email) out.email = email;
+  const resolved = Object.keys(out).length ? out : undefined;
+  gitLocalUserByRepoRoot.set(repoRoot, resolved);
+  return resolved;
 }
 
 function pickPath(payload) {
@@ -241,7 +303,7 @@ async function runPostToolUseAppendLog(raw, v) {
     return;
   }
 
-  const logAbs = join(rr, cfg.logPath);
+  const logAbs = resolveLogAbsPath(rr, cfg);
   mkdirSync(dirname(logAbs), { recursive: true });
 
   let payloadHash;
@@ -249,6 +311,7 @@ async function runPostToolUseAppendLog(raw, v) {
     payloadHash = createHash('sha256').update(raw, 'utf8').digest('hex').slice(0, 16);
   } catch {}
 
+  const gitUser = gitLocalUser(rr);
   const line = {
     v: 1,
     ts: new Date().toISOString(),
@@ -259,6 +322,7 @@ async function runPostToolUseAppendLog(raw, v) {
     tool_name: tn,
     repoRoot: rr,
     path: rel,
+    ...(gitUser ? { gitUser } : {}),
     ...(payloadHash ? { payloadHash } : {}),
   };
 
@@ -303,7 +367,7 @@ async function runCursorHook(raw, sourceArg) {
     return;
   }
 
-  const logAbs = join(repoRoot, cfg.logPath);
+  const logAbs = resolveLogAbsPath(repoRoot, cfg);
   mkdirSync(dirname(logAbs), { recursive: true });
 
   const tool = typeof payload.tool === 'string' ? payload.tool : undefined;
@@ -312,6 +376,7 @@ async function runCursorHook(raw, sourceArg) {
     payloadHash = createHash('sha256').update(raw, 'utf8').digest('hex').slice(0, 16);
   } catch {}
 
+  const gitUser = gitLocalUser(repoRoot);
   const line = {
     v: 1,
     ts: new Date().toISOString(),
@@ -319,6 +384,7 @@ async function runCursorHook(raw, sourceArg) {
     event,
     repoRoot,
     path: rel,
+    ...(gitUser ? { gitUser } : {}),
     ...(tool ? { tool } : {}),
     ...(payloadHash ? { payloadHash } : {}),
   };

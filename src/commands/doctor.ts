@@ -1,9 +1,10 @@
 import type { Command } from 'commander';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { tryGetGitRepoRoot } from '../util/paths.js';
 import { loadResolvedConfig } from '../config/load-config.js';
+import { TEAM_LOG_DIR_REL } from '../util/user-log-slug.js';
 import { getEditorAdapter, normalizeLegacyEditorId } from '../editors/registry.js';
 
 function checkNode(): void {
@@ -58,16 +59,35 @@ export function registerDoctor(program: Command): void {
         if (adapter.doctor) adapter.doctor({ repoRoot: root });
       }
 
-      const logAbs = join(root, cfg.logPath);
-      if (existsSync(logAbs)) {
-        const st = statSync(logAbs);
-        console.log(`[ok] Log file exists (${st.size} bytes): ${logAbs}`);
-        console.log('     Trigger another agent save and re-run doctor to see size increase.');
+      if (cfg.teamMode) {
+        const dir = join(root, TEAM_LOG_DIR_REL);
+        if (!existsSync(dir)) {
+          console.warn(`[warn] Team log directory not found yet: ${dir}`);
+          console.log('     After init, let an agent save a file so your per-user *.jsonl is created.');
+        } else {
+          const files = readdirSync(dir).filter((n) => n.endsWith('.jsonl'));
+          if (files.length === 0) {
+            console.warn(`[warn] No *.jsonl under ${dir} yet`);
+          } else {
+            let total = 0;
+            for (const f of files) {
+              total += statSync(join(dir, f)).size;
+            }
+            console.log(`[ok] Team mode: ${files.length} log file(s) under ${dir} (${total} bytes total)`);
+          }
+        }
       } else {
-        console.warn(`[warn] Log not found yet: ${logAbs}`);
-        console.log(
-          '     After init, let your editor agent touch a tracked file to create the log.',
-        );
+        const logAbs = join(root, cfg.logPath);
+        if (existsSync(logAbs)) {
+          const st = statSync(logAbs);
+          console.log(`[ok] Log file exists (${st.size} bytes): ${logAbs}`);
+          console.log('     Trigger another agent save and re-run doctor to see size increase.');
+        } else {
+          console.warn(`[warn] Log not found yet: ${logAbs}`);
+          console.log(
+            '     After init, let your editor agent touch a tracked file to create the log.',
+          );
+        }
       }
     });
 }

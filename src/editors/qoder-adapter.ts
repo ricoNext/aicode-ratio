@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { HOOK_SCRIPT_NAME } from '../constants.js';
 import type { EditorAdapter, EditorDoctorContext, EditorInstallContext, EditorUninstallContext } from './types.js';
 import { mergeQoderSettings, stripQoderSettingsRaw, qoderSettingsContainsOurs } from './qoder-hooks.js';
+import { installAicodeRatioReportCommand, tryRemoveAicodeRatioReportCommand } from './report-slash-command.js';
 
 const SETTINGS_REL = '.qoder/settings.json';
 
@@ -60,15 +61,22 @@ export const qoderAdapter: EditorAdapter = {
     const prev = existsSync(sp) ? readFileSync(sp, 'utf8') : '';
     const merged = mergeQoderSettings(prev);
     writeFileSync(sp, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
+
+    installAicodeRatioReportCommand(join(ctx.repoRoot, '.qoder', 'commands'));
   },
   doctor(ctx: EditorDoctorContext): void {
     runDoctor(ctx);
   },
   uninstall(ctx: EditorUninstallContext): string[] {
+    const lines: string[] = [];
+    const cmdRm = tryRemoveAicodeRatioReportCommand(join(ctx.repoRoot, '.qoder', 'commands'));
+    if (cmdRm) lines.push(`Removed ${cmdRm}`);
+
     const sp = settingsAbs(ctx.repoRoot);
-    if (!existsSync(sp)) return [];
+    if (!existsSync(sp)) return lines;
     const prev = readFileSync(sp, 'utf8');
     writeFileSync(sp, stripQoderSettingsRaw(prev), 'utf8');
-    return [`Removed aicode-ratio PostToolUse hook entries from ${sp}`];
+    lines.push(`Removed aicode-ratio PostToolUse hook entries from ${sp}`);
+    return lines;
   },
 };

@@ -77,7 +77,8 @@ aicode-ratio/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `version` | `1` | 配置版本，便于迁移 |
-| `logPath` | string | 默认 `.aicode-ratio/log.jsonl`（相对仓库根；旧版默认曾为 `.cursor/...`） |
+| `teamMode` | boolean | 默认 `false`；`true` 时 hook 写入 `.aicode-ratio/logs/<slug>.jsonl`，`report` 合并该目录全部 `*.jsonl` |
+| `logPath` | string | 个人模式默认 `.aicode-ratio/log.jsonl`（相对仓库根；旧版默认曾为 `.cursor/...`） |
 | `preCommitHours` | number | 默认 `72`，与「常隔几天才提交」场景可调大 |
 | `postCommitHours` | number | 默认 `2`；常用 `git commit --amend` 时建议 `24` |
 | `gitDateField` | `"committer"` \| `"author"` | 默认 `committer` |
@@ -90,7 +91,7 @@ aicode-ratio/
 
 ## 4. 日志格式（jsonl）
 
-**路径**：默认 `<repoRoot>/.aicode-ratio/log.jsonl`，**必须**加入 `.gitignore`（`init` 会追加 `.aicode-ratio/` 下的相关规则）。
+**路径**：个人模式默认 `<repoRoot>/.aicode-ratio/log.jsonl`；**团队模式**（`teamMode: true`）下每人写入 `<repoRoot>/.aicode-ratio/logs/<slug>.jsonl`（slug 来自本机 `git config user.*`）。`init`：**团队模式**不向 `.gitignore` 写入跟踪日志路径；**个人模式**由用户选择（TTY 询问或 `--gitignore-logs` / `--no-gitignore-logs`）是否追加主日志与轮转等规则。
 
 **每行一个 JSON 对象**：
 
@@ -99,9 +100,10 @@ aicode-ratio/
 | `v` | 是 | 日志 schema 版本，如 `1` |
 | `ts` | 是 | ISO8601，建议 **UTC** 存盘 |
 | `source` | 是 | `"agent"` \| `"tab"` |
-| `event` | 是 | `"afterFileEdit"` \| `"afterTabFileEdit"` |
+| `event` | 是 | `"afterFileEdit"` \| `"afterTabFileEdit"` \| `"PostToolUse"` 等 |
 | `repoRoot` | 是 | 规范化绝对路径（`git rev-parse --show-toplevel`，失败则用 `cwd`） |
 | `path` | 是 | **相对 repoRoot** 的 posix 路径（统一 `/`） |
+| `gitUser` | 否 | `{ "name"?, "email"? }`，Hook 执行时在该仓库下读取的 `git config user.*`；无则报表归 `(unknown log user)` |
 | `tool` | 否 | stdin 能解析则写 |
 | `payloadHash` | 否 | stdin 整段 SHA256 前 16 位，**不存原文** |
 
@@ -117,7 +119,8 @@ aicode-ratio/
 
 - 合并或创建 `.cursor/hooks.json`。
 - 将 `append-log.mjs` **复制**到 `.cursor/hooks/aicode-ratio-append-log.mjs`（带版本注释），hooks 只引用**项目相对路径**。
-- 更新 `.gitignore`（幂等追加忽略项）。
+- 为所选编辑器写入 **`aicode-ratio-report`** slash 命令（Markdown）：`.cursor/commands/`、`.claude/commands/`、`.codebuddy/commands/`、`.qoder/commands/` 之一或多项；内容要求 Agent **不得**在未确认 `--since`/`--until` 前执行 `report`（无预填默认月；占位符命令，需从用户消息解析或交互询问后再替换执行）；**若始终无法识别或确认时间范围，则不得生成报表**。
+- 按需更新 `.gitignore`（仅个人模式且用户确认或传参时追加主日志与轮转；团队模式不写日志相关忽略项）。
 
 ### 5.2 `hooks.json` 合并策略
 
@@ -155,7 +158,7 @@ aicode-ratio/
 2. 从 stdin 按**多候选字段**解析路径（兼容 Cursor 版本差异；文档维护「已验证版本」列表）。
 3. `git rev-parse --show-toplevel` → `repoRoot`。
 4. 路径转相对仓库根并 posix 化；命中 `ignoreLogPathPrefixes` 则丢弃。
-5. 组装一行 JSON，追加到 `logPath`。
+5. 组装一行 JSON，追加到 `logPath`（个人模式）或 `.aicode-ratio/logs/<slug>.jsonl`（团队模式）。
 6. stdout：遵循 Cursor 对该 hook 的返回约定（无要求时可不写或 `{}`，以官方文档为准）。
 
 ### 5.4 `.gitignore` 追加项
@@ -179,7 +182,7 @@ aicode-ratio report \
   --author "user@example.com" \
   --no-merges \
   --format md \
-  --out ./reports/2026-04.md \
+  --out ./.aicode-ratio/reports/aicode-ratio-2026-04.md \
   --pre-hours 72 \
   --post-hours 2
 ```

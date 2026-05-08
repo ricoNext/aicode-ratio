@@ -1,9 +1,40 @@
-import type { LogIndex } from './load-log.js';
+import type { LogEvent, LogIndex } from './load-log.js';
 
 export interface FileMatch {
   path: string;
   byAgent: boolean;
   byTab: boolean;
+  /** Distinct local `git config` identities (from log) whose agent events fell in the commit window for this path. */
+  agentLogGitUserKeys: string[];
+  /** Distinct identities for tab channel. */
+  tabLogGitUserKeys: string[];
+}
+
+/** First index i with events[i].tsMs >= target, or events.length */
+export function lowerBoundEventTs(events: LogEvent[], targetMs: number): number {
+  let left = 0;
+  let right = events.length;
+  while (left < right) {
+    const mid = (left + right) >>> 1;
+    if (events[mid].tsMs < targetMs) left = mid + 1;
+    else right = mid;
+  }
+  return left;
+}
+
+export function hasEventInRange(events: LogEvent[], lo: number, hi: number): boolean {
+  const i = lowerBoundEventTs(events, lo);
+  return i < events.length && events[i].tsMs <= hi;
+}
+
+export function logGitUserKeysInRange(events: LogEvent[], lo: number, hi: number): string[] {
+  const i = lowerBoundEventTs(events, lo);
+  const set = new Set<string>();
+  for (let j = i; j < events.length; j++) {
+    if (events[j].tsMs > hi) break;
+    set.add(events[j].gitUserKey);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -24,14 +55,20 @@ export function intersectCommit(opts: {
   for (const path of files) {
     const agentArr = index.agentByPath.get(path) ?? [];
     const tabArr = index.tabByPath.get(path) ?? [];
-    const byAgent = hasInRange(agentArr, lo, hi);
-    const byTab = hasInRange(tabArr, lo, hi);
-    out.push({ path, byAgent, byTab });
+    const byAgent = hasEventInRange(agentArr, lo, hi);
+    const byTab = hasEventInRange(tabArr, lo, hi);
+    out.push({
+      path,
+      byAgent,
+      byTab,
+      agentLogGitUserKeys: byAgent ? logGitUserKeysInRange(agentArr, lo, hi) : [],
+      tabLogGitUserKeys: byTab ? logGitUserKeysInRange(tabArr, lo, hi) : [],
+    });
   }
   return out;
 }
 
-/** Binary search: returns true if sorted array has any element in [lo, hi] */
+/** Binary search: returns true if sorted number array has any element in [lo, hi] */
 export function hasInRange(sorted: number[], lo: number, hi: number): boolean {
   if (sorted.length === 0) return false;
   let left = 0;

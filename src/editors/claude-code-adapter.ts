@@ -11,6 +11,7 @@ import {
   stripClaudeCodeSettingsRaw,
   claudeCodeSettingsContainsOurs,
 } from './claude-code-hooks.js';
+import { installAicodeRatioReportCommand, tryRemoveAicodeRatioReportCommand } from './report-slash-command.js';
 
 const SETTINGS_REL = '.claude/settings.json';
 
@@ -66,15 +67,22 @@ export const claudeCodeAdapter: EditorAdapter = {
     const prev = existsSync(sp) ? readFileSync(sp, 'utf8') : '';
     const merged = mergeClaudeCodeSettings(prev);
     writeFileSync(sp, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
+
+    installAicodeRatioReportCommand(join(ctx.repoRoot, '.claude', 'commands'));
   },
   doctor(ctx: EditorDoctorContext): void {
     runDoctor(ctx);
   },
   uninstall(ctx: EditorUninstallContext): string[] {
+    const lines: string[] = [];
+    const cmdRm = tryRemoveAicodeRatioReportCommand(join(ctx.repoRoot, '.claude', 'commands'));
+    if (cmdRm) lines.push(`Removed ${cmdRm}`);
+
     const sp = settingsAbs(ctx.repoRoot);
-    if (!existsSync(sp)) return [];
+    if (!existsSync(sp)) return lines;
     const prev = readFileSync(sp, 'utf8');
     writeFileSync(sp, stripClaudeCodeSettingsRaw(prev), 'utf8');
-    return [`Removed aicode-ratio PostToolUse hook entries from ${sp}`];
+    lines.push(`Removed aicode-ratio PostToolUse hook entries from ${sp}`);
+    return lines;
   },
 };

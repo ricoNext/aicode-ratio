@@ -5,7 +5,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { getRepoRoot } from '../util/paths.js';
-import { CONFIG_FILENAME, HOOK_SCRIPT_NAME } from '../constants.js';
+import { CONFIG_FILENAME, GITIGNORE_LINES, HOOK_SCRIPT_NAME } from '../constants.js';
 import {
   getEditorAdapter,
   listEditorAdapters,
@@ -20,7 +20,7 @@ const LEGACY_HOOK_SCRIPTS = [
 ] as const;
 
 function collectAllGitignoreLines(): Set<string> {
-  const ig = new Set<string>();
+  const ig = new Set<string>(GITIGNORE_LINES);
   for (const a of listEditorAdapters()) {
     for (const line of a.gitignoreLines) ig.add(line);
   }

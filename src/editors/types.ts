@@ -23,7 +23,7 @@ export interface EditorAdapter {
   readonly id: string;
   readonly label: string;
   readonly tier: EditorTier;
-  /** Lines appended to `.gitignore` during `init` (deduped with existing lines). */
+  /** Extra lines appended to `.gitignore` during `init` (deduped). Log-related lines: team mode writes none; personal mode uses `GITIGNORE_LINES_PERSONAL` if the user opts in. */
   readonly gitignoreLines: readonly string[];
   install(ctx: EditorInstallContext): void;
   /** Optional checks scoped to this editor after shared Node/Git checks. */

@@ -47,12 +47,18 @@ export function hookCommandMatchesOurs(command: string | undefined): boolean {
   return LEGACY_HOOK_COMMAND_MARKERS.some((m) => command.includes(m));
 }
 
-/** `init` 追加到 `.gitignore`：主日志与 hook 报错（均在 `.aicode-ratio/`）。 */
-export const GITIGNORE_LINES = [
+/**
+ * `init` 在个人模式且用户选择「将日志加入 .gitignore」时追加：单文件主日志、轮转段、hook 报错。
+ * 团队模式不向 `.gitignore` 写入任何跟踪日志相关行（便于提交 `.aicode-ratio/logs/*.jsonl`）。
+ */
+export const GITIGNORE_LINES_PERSONAL = [
   '.aicode-ratio/log.jsonl',
   '.aicode-ratio/log.jsonl.*',
   '.aicode-ratio/hook-errors.log',
 ] as const;
+
+/** 卸载时从 `.gitignore` 中移除的、init 可能写入的日志相关行。 */
+export const GITIGNORE_LINES = [...GITIGNORE_LINES_PERSONAL] as const;
 
 export const CONFIG_FILENAME = '.aicode-ratio.json';
 

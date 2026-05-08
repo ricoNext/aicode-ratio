@@ -17,7 +17,12 @@ import { appendGitignoreLines } from '../util/append-gitignore.js';
 import { getRepoRoot } from '../util/paths.js';
 import { ConfigSchema } from '../config/schema.js';
 import { DEFAULTS } from '../config/defaults.js';
-import { CONFIG_FILENAME, LEGACY_CONFIG_FILENAMES } from '../constants.js';
+import { CONFIG_FILENAME, GITIGNORE_LINES_PERSONAL, LEGACY_CONFIG_FILENAMES } from '../constants.js';
+import { parseInitTeamModeFromCommander, resolveInitTeamMode } from './resolve-init-team-mode.js';
+import {
+  parseInitPersonalLogGitignoreFromCommander,
+  resolveInitPersonalLogGitignore,
+} from './resolve-init-personal-log-gitignore.js';
 
 function ensureGitRepo(repo: string): void {
   try {
@@ -32,17 +37,17 @@ function hasAnyConfig(root: string): boolean {
   return LEGACY_CONFIG_FILENAMES.some((f) => existsSync(join(root, f)));
 }
 
-function writePrimaryConfig(root: string, editorIds: string[]): void {
-  const parsed = ConfigSchema.parse({ ...DEFAULTS, enabledEditors: editorIds });
+function writePrimaryConfig(root: string, editorIds: string[], teamMode: boolean): void {
+  const parsed = ConfigSchema.parse({ ...DEFAULTS, enabledEditors: editorIds, teamMode });
   writeFileSync(join(root, CONFIG_FILENAME), `${JSON.stringify(parsed, null, 2)}\n`, 'utf8');
 }
 
-function mergeEnabledEditorsIntoPrimaryConfig(root: string, editorIds: string[]): void {
+function mergeEnabledEditorsIntoPrimaryConfig(root: string, editorIds: string[], teamMode: boolean): void {
   const cfgPath = join(root, CONFIG_FILENAME);
   if (!existsSync(cfgPath)) return;
   const raw = readFileSync(cfgPath, 'utf8');
   const data = JSON.parse(raw) as Record<string, unknown>;
-  const merged = ConfigSchema.parse({ ...DEFAULTS, ...data, enabledEditors: editorIds });
+  const merged = ConfigSchema.parse({ ...DEFAULTS, ...data, enabledEditors: editorIds, teamMode });
   writeFileSync(cfgPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
 }
 
@@ -56,8 +61,13 @@ function editorsSelectionHelp(): string {
     '  acr init --editors cursor         # comma-separated list',
     '  acr init cursor                   # positional [editors...]',
     '  acr init -y                       # Cursor only, no Inquirer (CI/scripts)',
+    '  acr init -y --team                # team mode: per-user logs; no log lines added to .gitignore',
+    '  acr init -y --no-team             # personal mode (default with -y)',
+    '  acr init -y --no-team --no-gitignore-logs  # personal + track log.jsonl in Git',
+    '  acr init -y --no-team --gitignore-logs     # personal + append log paths to .gitignore (default)',
     '',
     'Interactive: in a TTY, `acr init` with none of the above runs @inquirer/prompts to pick editors.',
+    '  Then: team mode (default No). If personal mode: ask whether to add log paths to .gitignore (default Yes).',
     `  Known ids: ${registeredEditorIds().join(', ')}`,
   ].join('\n');
 }
@@ -72,7 +82,7 @@ function selectedEditorIdsFromOpts(opts: Record<string, unknown>): string[] {
 export function registerInit(program: Command): void {
   const initCmd = new Command('init')
     .description(
-      'Install editor adapters (hooks, scripts) for AI edit logging and configure .gitignore',
+      'Install editor hooks; choose team vs personal logs; in personal mode optionally add log paths to .gitignore',
     )
     .addHelpText('after', editorsSelectionHelp())
     .addArgument(
@@ -89,6 +99,16 @@ export function registerInit(program: Command): void {
     .option(
       '-y, --yes',
       'skip Inquirer and install Cursor only (use when stdin is not a TTY or in scripts)',
+    )
+    .option('--team', 'enable team mode: per-user log files under .aicode-ratio/logs/')
+    .option('--no-team', 'personal mode: single log file (default with -y)')
+    .option(
+      '--gitignore-logs',
+      'personal mode only: append .aicode-ratio log paths to .gitignore (non-interactive default when paired with --no-team)',
+    )
+    .option(
+      '--no-gitignore-logs',
+      'personal mode only: do not append those .gitignore lines (track log in Git)',
     );
 
   for (const a of listEditorAdapters()) {
@@ -100,7 +120,15 @@ export function registerInit(program: Command): void {
   initCmd.action(
     async (
       positionalEditors: string[],
-      options: { repo: string; editors?: string; yes?: boolean },
+      options: {
+        repo: string;
+        editors?: string;
+        yes?: boolean;
+        team?: boolean;
+        noTeam?: boolean;
+        gitignoreLogs?: boolean;
+        noGitignoreLogs?: boolean;
+      },
       command: Command,
     ) => {
       const repoRoot = resolve(options.repo);
@@ -110,6 +138,15 @@ export function registerInit(program: Command): void {
       const opts = command.opts() as Record<string, unknown>;
       const selectedFromFlags = selectedEditorIdsFromOpts(opts);
 
+      const teamParsed = parseInitTeamModeFromCommander({
+        team: options.team === true,
+        noTeam: options.noTeam === true,
+      });
+      if (!teamParsed.ok) {
+        command.error(`error: ${teamParsed.message}`);
+        return;
+      }
+
       const cliResolved = parseInitEditorIdsFromCommander({
         editors: options.editors,
         yes: options.yes,
@@ -118,6 +155,8 @@ export function registerInit(program: Command): void {
       });
 
       let editorIds: string[];
+      let teamMode: boolean;
+      let appendPersonalLogGitignore = false;
       try {
         const resolved = await resolveInitEditorsAfterCommander(cliResolved);
         if (!resolved.ok) {
@@ -130,6 +169,26 @@ export function registerInit(program: Command): void {
           return;
         }
         editorIds = resolved.ids;
+        teamMode = await resolveInitTeamMode(teamParsed.explicit);
+
+        if (teamMode) {
+          if (options.gitignoreLogs === true || options.noGitignoreLogs === true) {
+            command.error(
+              'error: --gitignore-logs / --no-gitignore-logs apply only in personal mode (use --no-team).',
+            );
+            return;
+          }
+        } else {
+          const igParsed = parseInitPersonalLogGitignoreFromCommander({
+            gitignoreLogs: options.gitignoreLogs === true,
+            noGitignoreLogs: options.noGitignoreLogs === true,
+          });
+          if (!igParsed.ok) {
+            command.error(`error: ${igParsed.message}`);
+            return;
+          }
+          appendPersonalLogGitignore = await resolveInitPersonalLogGitignore(igParsed.explicit);
+        }
       } catch (e) {
         if (e instanceof Error && e.name === 'ExitPromptError') {
           process.exitCode = 130;
@@ -146,23 +205,32 @@ export function registerInit(program: Command): void {
         adapter.install({ repoRoot: root, bundledHooksDir });
       }
 
-      const ig = new Set<string>();
-      for (const id of editorIds) {
-        const adapter = getEditorAdapter(id);
-        if (!adapter) continue;
-        for (const line of adapter.gitignoreLines) ig.add(line);
+      if (!teamMode && appendPersonalLogGitignore) {
+        appendGitignoreLines(root, [...GITIGNORE_LINES_PERSONAL]);
       }
-      appendGitignoreLines(root, [...ig]);
 
       if (!hasAnyConfig(root)) {
-        writePrimaryConfig(root, editorIds);
+        writePrimaryConfig(root, editorIds, teamMode);
       } else {
-        mergeEnabledEditorsIntoPrimaryConfig(root, editorIds);
+        mergeEnabledEditorsIntoPrimaryConfig(root, editorIds, teamMode);
       }
 
       console.log(`Initialized aicode-ratio in ${root}`);
       console.log('');
       console.log(`Editors: ${editorIds.join(', ')}`);
+      console.log(`Team mode: ${teamMode ? 'on' : 'off'}`);
+      console.log('');
+      if (teamMode) {
+        console.log(
+          'Per-user logs: .aicode-ratio/logs/<local-git-user>.jsonl — no tracker log paths were added to .gitignore (commit logs to share).',
+        );
+      } else if (appendPersonalLogGitignore) {
+        console.log('Personal mode: tracker log paths were appended to .gitignore (privacy default).');
+      } else {
+        console.log(
+          'Personal mode: skipped .gitignore rules for tracker logs — you can commit .aicode-ratio/log.jsonl if you want.',
+        );
+      }
       console.log('');
       console.log('Next steps:');
       console.log("  1. Confirm each editor's hooks point at the bundled append-log script.");
@@ -172,7 +240,10 @@ export function registerInit(program: Command): void {
       console.log(`     (Qoder: ${join(root, '.qoder', 'settings.json')})`);
       console.log('  2. Run: pnpm dlx aicode-ratio doctor');
       console.log(
-        `  3. Trigger an agent edit and check the log path in ${CONFIG_FILENAME} (default: .aicode-ratio/log.jsonl)`,
+        `  3. See ${CONFIG_FILENAME} for teamMode / logPath; trigger an agent edit to create the log.`,
+      );
+      console.log(
+        '  4. Slash command: in chat, type `/` and pick **aicode-ratio-report** — the agent must confirm `--since` / `--until` with you (or parse them from your message) before running `report` (see .cursor/commands, .claude/commands, …).',
       );
     },
   );

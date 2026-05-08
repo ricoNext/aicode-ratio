@@ -34,6 +34,7 @@ describe('report pipeline (temp git repo)', () => {
       event: 'afterFileEdit',
       repoRoot: dir,
       path: 'hello.txt',
+      gitUser: { name: 'T', email: 't@example.com' },
     });
     writeFileSync(join(dir, '.aicode-ratio', 'log.jsonl'), `${logLine}\n`, 'utf8');
 
@@ -48,6 +49,7 @@ describe('report pipeline (temp git repo)', () => {
         ignoreLogPathPrefixes: ['node_modules/', 'dist/', '.git/'],
         ignoreLogGlobs: [],
         enabledEditors: ['cursor'],
+        teamMode: false,
         sources: { agent: true, tab: true },
       }),
       'utf8',
@@ -86,6 +88,7 @@ describe('report pipeline (temp git repo)', () => {
     const index = await loadLog({
       logPath: config.logPath,
       repoRoot: dir,
+      teamMode: config.teamMode,
       fromMs: minTc * 1000 - preMs,
       toMs: maxTc * 1000 + postMs,
       sources: config.sources,
@@ -117,6 +120,8 @@ describe('report pipeline (temp git repo)', () => {
     expect(agg.commitsWithTouch).toBeGreaterThanOrEqual(1);
     expect(agg.ratioA).toBeGreaterThan(0);
 
+    expect(agg.byLogGitUser.some((r) => r.userKey === 't@example.com')).toBe(true);
+
     const md = renderReport(agg, {
       format: 'md',
       params: {
@@ -130,6 +135,7 @@ describe('report pipeline (temp git repo)', () => {
     });
     expect(md).toContain('口径 A');
     expect(md).toContain('口径 B');
+    expect(md).toContain('按本地 Git 用户');
   });
 
   it('CLI report writes JSON to a file', () => {
@@ -140,8 +146,25 @@ describe('report pipeline (temp git repo)', () => {
       [cli, 'report', '--repo', dir, '--since', '2000-01-01', '--until', '2099-01-01', '--format', 'json', '--out', out],
       { stdio: 'pipe', encoding: 'utf8' },
     );
-    const j = JSON.parse(readFileSync(out, 'utf8')) as { reportVersion: number; summary: { ratioA: number } };
-    expect(j.reportVersion).toBe(1);
+    const j = JSON.parse(readFileSync(out, 'utf8')) as {
+      reportVersion: number;
+      summary: { ratioA: number };
+      byLogGitUser: Array<{ userKey: string }>;
+    };
+    expect(j.reportVersion).toBe(2);
+    expect(j.byLogGitUser.some((r) => r.userKey === 't@example.com')).toBe(true);
     expect(j.summary.ratioA).toBeGreaterThan(0);
+  });
+
+  it('CLI report creates parent directories for --out when missing', () => {
+    const nested = join(dir, '.aicode-ratio', 'reports', 'nested', 'out.json');
+    const cli = join(dirname(fileURLToPath(import.meta.url)), '../../dist/cli.js');
+    execFileSync(
+      process.execPath,
+      [cli, 'report', '--repo', dir, '--since', '2000-01-01', '--until', '2099-01-01', '--format', 'json', '--out', nested],
+      { cwd: dir, stdio: 'pipe', encoding: 'utf8' },
+    );
+    const j = JSON.parse(readFileSync(nested, 'utf8')) as { reportVersion: number };
+    expect(j.reportVersion).toBe(2);
   });
 });

@@ -31,6 +31,14 @@
       "esbuild"
     ]
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ricoNext/aicode-ratio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ricoNext/aicode-ratio/issues"
+  },
+  "homepage": "https://github.com/ricoNext/aicode-ratio#readme",
   "keywords": [
     "ai",
     "agent",
@@ -40,7 +48,7 @@
     "git",
     "report"
   ],
-  "author": "",
+  "author": "RicoNext",
   "license": "MIT",
   "devDependencies": {
     "@types/micromatch": "^4.0.9",

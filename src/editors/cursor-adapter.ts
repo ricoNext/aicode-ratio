@@ -1,8 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { GITIGNORE_LINES, HOOK_SCRIPT_NAME, hookCommandMatchesOurs } from '../constants.js';
+import { HOOK_SCRIPT_NAME, hookCommandMatchesOurs } from '../constants.js';
 import type { EditorAdapter, EditorDoctorContext, EditorInstallContext, EditorUninstallContext } from './types.js';
 import { mergeHooksJson, stripCursorHooksFromHooksJsonRaw } from './cursor-hooks.js';
+import { installAicodeRatioReportCommand, tryRemoveAicodeRatioReportCommand } from './report-slash-command.js';
 
 function bundledHookPath(ctx: Pick<EditorInstallContext, 'bundledHooksDir'>): string {
   return join(ctx.bundledHooksDir, HOOK_SCRIPT_NAME);
@@ -39,7 +40,7 @@ export const cursorAdapter: EditorAdapter = {
   id: 'cursor',
   label: 'Cursor',
   tier: 'supported',
-  gitignoreLines: GITIGNORE_LINES,
+  gitignoreLines: [],
   install(ctx: EditorInstallContext): void {
     const cursorDir = join(ctx.repoRoot, '.cursor');
     const hooksDir = join(cursorDir, 'hooks');
@@ -58,15 +59,22 @@ export const cursorAdapter: EditorAdapter = {
     const prev = existsSync(hooksJsonPath) ? readFileSync(hooksJsonPath, 'utf8') : '';
     const merged = mergeHooksJson(prev);
     writeFileSync(hooksJsonPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
+
+    installAicodeRatioReportCommand(join(ctx.repoRoot, '.cursor', 'commands'));
   },
   doctor(ctx: EditorDoctorContext): void {
     runDoctor(ctx);
   },
   uninstall(ctx: EditorUninstallContext): string[] {
+    const lines: string[] = [];
+    const cmdRm = tryRemoveAicodeRatioReportCommand(join(ctx.repoRoot, '.cursor', 'commands'));
+    if (cmdRm) lines.push(`Removed ${cmdRm}`);
+
     const hooksJsonPath = join(ctx.repoRoot, '.cursor', 'hooks.json');
-    if (!existsSync(hooksJsonPath)) return [];
+    if (!existsSync(hooksJsonPath)) return lines;
     const prev = readFileSync(hooksJsonPath, 'utf8');
     writeFileSync(hooksJsonPath, stripCursorHooksFromHooksJsonRaw(prev), 'utf8');
-    return [`Removed aicode-ratio hook entries from ${hooksJsonPath}`];
+    lines.push(`Removed aicode-ratio hook entries from ${hooksJsonPath}`);
+    return lines;
   },
 };

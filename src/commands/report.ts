@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
-import { writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { loadResolvedConfig } from '../config/load-config.js';
 import { listCommits, getCommitFiles, isRootCommit } from '../report/git-queries.js';
 import { loadLog } from '../report/load-log.js';
@@ -22,6 +22,13 @@ function parseHours(v: string | undefined, fallback: number): number {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) throw new Error(`Invalid hours: ${v}`);
   return n;
+}
+
+/** Resolve `--out` relative to cwd, create parent dirs, then write (matches prior relative-path behavior). */
+function writeReportOutFile(outPath: string, text: string): void {
+  const abs = resolve(outPath);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, text, 'utf8');
 }
 
 export function registerReport(program: Command): void {
@@ -117,7 +124,7 @@ async function runReport(options: {
           },
           configSnapshot: config,
         });
-        if (options.out) writeFileSync(options.out, text, 'utf8');
+        if (options.out) writeReportOutFile(options.out, text);
         else process.stdout.write(text);
         return;
       }
@@ -130,6 +137,7 @@ async function runReport(options: {
       const index = await loadLog({
         logPath: config.logPath,
         repoRoot,
+        teamMode: config.teamMode,
         fromMs,
         toMs,
         sources: config.sources,
@@ -179,6 +187,6 @@ async function runReport(options: {
         configSnapshot: config,
       });
 
-      if (options.out) writeFileSync(options.out, text, 'utf8');
+      if (options.out) writeReportOutFile(options.out, text);
       else process.stdout.write(text);
 }

@@ -5,7 +5,7 @@ dist/
 .DS_Store
 coverage/
 
-# aicode-ratio
-.aicode-ratio/log.jsonl
-.aicode-ratio/log.jsonl.*
-.aicode-ratio/hook-errors.log
+# 本仓库内运行 init / hooks 产生的本地日志与配置（勿提交）
+.aicode-ratio/
+
+docs/

@@ -2,6 +2,7 @@ import type { Config } from './schema.js';
 
 export const DEFAULTS: Config = {
   version: 1,
+  teamMode: false,
   logPath: '.aicode-ratio/log.jsonl',
   preCommitHours: 72,
   postCommitHours: 2,

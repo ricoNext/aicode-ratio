@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 export const ConfigSchema = z.object({
   version: z.literal(1),
+  /**
+   * Team mode: each developer writes their own file under `.aicode-ratio/logs/<slug>.jsonl`
+   * (from local `git config user.*`) so Git merges rarely conflict; `report` reads all `*.jsonl` there.
+   */
+  teamMode: z.boolean().default(false),
   logPath: z.string().default('.aicode-ratio/log.jsonl'),
   preCommitHours: z.number().positive().default(72),
   postCommitHours: z.number().positive().default(2),
