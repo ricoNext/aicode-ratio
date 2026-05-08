@@ -1,24 +1,52 @@
 /**
  * aicode-ratio-append-log.mjs
- * Version: 0.1.0 (aicode-ratio)
+ * Version: 0.5.0 (aicode-ratio)
  *
- * Editor hook script (e.g. Cursor `afterFileEdit` / `afterTabFileEdit`).
- * argv[2]: "agent" | "tab"
+ * argv[2] mode:
+ *   - Cursor: "agent" | "tab"
+ *   - CodeBuddy: "codebuddy" (legacy: "codebuddyIDE") — PostToolUse Write|Edit.
+ *   - Claude Code: "claude-code" — same hook JSON shape / stdout contract.
+ *   - Qoder: "qoder" — PostToolUse Write|Edit（相对路径 `.qoder/hooks/`，见 Qoder 文档）。
  *
- * Copied to `.cursor/hooks/aicode-ratio-append-log.mjs` by `aicode-ratio init`.
+ * Copied into `.cursor/hooks/`, `.codebuddy/hooks/`, `.claude/hooks/`, and `.qoder/hooks/` by `aicode-ratio init`.
  */
 
 import { execSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const sourceArg = process.argv[2] === 'tab' ? 'tab' : 'agent';
-const event = sourceArg === 'tab' ? 'afterTabFileEdit' : 'afterFileEdit';
+const LEGACY_HOOK_ARG_CODEBUDDY_IDE = 'codebuddyIDE';
 
 const DEFAULT_IGNORE_PREFIXES = ['node_modules/', 'dist/', '.git/'];
 const DEFAULT_LOG_REL = '.aicode-ratio/log.jsonl';
+
+const MODE = process.argv[2] ?? 'agent';
+
+function isCodeBuddyMode(m) {
+  return m === 'codebuddy' || m === LEGACY_HOOK_ARG_CODEBUDDY_IDE;
+}
+
+function isClaudeCodeMode(m) {
+  return m === 'claude-code';
+}
+
+function isQoderMode(m) {
+  return m === 'qoder';
+}
+
+function isPostToolUseCompatMode(m) {
+  return isCodeBuddyMode(m) || isClaudeCodeMode(m) || isQoderMode(m);
+}
+
+function firstTruthyEnv(names) {
+  for (const n of names) {
+    const x = process.env[n];
+    if (typeof x === 'string' && x.trim().length > 0) return x.trim();
+  }
+  return undefined;
+}
 
 function readStdinUtf8() {
   return new Promise((resolve, reject) => {
@@ -35,11 +63,7 @@ function loadConfig(repoRoot) {
     logPath: DEFAULT_LOG_REL,
     ignoreLogPathPrefixes: DEFAULT_IGNORE_PREFIXES,
   };
-  const paths = [
-    join(repoRoot, '.aicode-ratio.json'),
-    join(repoRoot, '.agent-code-attribution.json'),
-    join(repoRoot, '.cursor-attribution.json'),
-  ];
+  const paths = [join(repoRoot, '.aicode-ratio.json'), join(repoRoot, '.cursor-attribution.json')];
   for (const p of paths) {
     if (!existsSync(p)) continue;
     try {
@@ -109,8 +133,142 @@ function appendErrorLine(repoRoot, message) {
   }
 }
 
-async function main() {
-  const raw = await readStdinUtf8();
+/** PostToolUse（Claude Code / CodeBuddy / Qoder 兼容）：stdout 仅 JSON，不阻断。 */
+function stdoutPostToolUseOk() {
+  process.stdout.write(
+    JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+      },
+    }),
+  );
+}
+
+function appendPathFieldDebug(repoRoot, debugBasename, editor, obj) {
+  try {
+    const p = join(repoRoot, '.aicode-ratio', debugBasename);
+    mkdirSync(dirname(p), { recursive: true });
+    appendFileSync(
+      p,
+      `${JSON.stringify({ ts: new Date().toISOString(), editor, ...obj })}\n`,
+      'utf8',
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function pickToolInputPath(ti) {
+  if (typeof ti.file_path === 'string' && ti.file_path.trim().length > 0)
+    return { raw: ti.file_path.trim(), field: 'file_path' };
+  if (typeof ti.filePath === 'string' && ti.filePath.trim().length > 0)
+    return { raw: ti.filePath.trim(), field: 'filePath' };
+  return { raw: null, field: 'none' };
+}
+
+/** Claude / CodeBuddy 用 Write|Edit；Qoder 还提供原生工具名映射（文档工具名映射表） */
+function isWriteOrEditPostToolUse(toolName) {
+  return (
+    toolName === 'Write' ||
+    toolName === 'Edit' ||
+    toolName === 'create_file' ||
+    toolName === 'search_replace'
+  );
+}
+
+/** @param {{ projectDirEnvOrder: string[]; editor: string; logTag: string; debugLogFile: string }} v */
+async function runPostToolUseAppendLog(raw, v) {
+  let payload;
+  try {
+    payload = JSON.parse(raw || '{}');
+  } catch (e) {
+    const cw = gitTopLevel(process.cwd()) ?? process.cwd();
+    appendErrorLine(
+      cw,
+      `PostToolUse hook json parse (${v.logTag}): ${e instanceof Error ? e.message : String(e)}`,
+    );
+    stdoutPostToolUseOk();
+    return;
+  }
+
+  const envRoot = firstTruthyEnv(v.projectDirEnvOrder);
+
+  const cwdFromPayload =
+    typeof payload.cwd === 'string' && payload.cwd.trim().length > 0 ? payload.cwd.trim() : null;
+  const baseForResolve = cwdFromPayload ?? envRoot ?? process.cwd();
+
+  const repoRoot = gitTopLevel(baseForResolve) ?? (envRoot && gitTopLevel(envRoot)) ?? envRoot ?? baseForResolve;
+
+  const tn = payload.tool_name;
+  if (!isWriteOrEditPostToolUse(tn)) {
+    stdoutPostToolUseOk();
+    return;
+  }
+
+  const ti = payload.tool_input && typeof payload.tool_input === 'object' ? payload.tool_input : {};
+  const { raw: rawPath, field } = pickToolInputPath(ti);
+
+  const dbgMsg = `[aicode-ratio][${v.logTag}] pathField=${field} tool_name=${tn}`;
+  console.error(dbgMsg);
+  appendPathFieldDebug(repoRoot, v.debugLogFile, v.editor, {
+    pathField: field,
+    tool_name: tn,
+    cwd: cwdFromPayload,
+    hookArgv: MODE,
+    rawPathSnippet:
+      typeof rawPath === 'string' ? rawPath.slice(0, 400) + (rawPath.length > 400 ? '…' : '') : null,
+  });
+
+  if (!rawPath) {
+    stdoutPostToolUseOk();
+    return;
+  }
+
+  const absPath = resolvePath(baseForResolve, rawPath);
+  const gr = gitTopLevel(absPath) ?? gitTopLevel(dirname(absPath)) ?? repoRoot;
+  const rr = typeof gr === 'string' ? gr : repoRoot;
+
+  const cfg = loadConfig(rr);
+  const rel = relative(rr, absPath).split(sep).join('/');
+  if (!rel || rel.startsWith('..')) {
+    stdoutPostToolUseOk();
+    return;
+  }
+
+  if (shouldIgnore(rel, cfg.ignoreLogPathPrefixes)) {
+    stdoutPostToolUseOk();
+    return;
+  }
+
+  const logAbs = join(rr, cfg.logPath);
+  mkdirSync(dirname(logAbs), { recursive: true });
+
+  let payloadHash;
+  try {
+    payloadHash = createHash('sha256').update(raw, 'utf8').digest('hex').slice(0, 16);
+  } catch {}
+
+  const line = {
+    v: 1,
+    ts: new Date().toISOString(),
+    source: 'agent',
+    event: 'PostToolUse',
+    editor: v.editor,
+    pathField: field,
+    tool_name: tn,
+    repoRoot: rr,
+    path: rel,
+    ...(payloadHash ? { payloadHash } : {}),
+  };
+
+  appendFileSync(logAbs, `${JSON.stringify(line)}\n`, 'utf8');
+  stdoutPostToolUseOk();
+}
+
+async function runCursorHook(raw, sourceArg) {
+  const event = sourceArg === 'tab' ? 'afterTabFileEdit' : 'afterFileEdit';
+
   let payload;
   try {
     payload = JSON.parse(raw || '{}');
@@ -152,9 +310,7 @@ async function main() {
   let payloadHash;
   try {
     payloadHash = createHash('sha256').update(raw, 'utf8').digest('hex').slice(0, 16);
-  } catch {
-    // optional
-  }
+  } catch {}
 
   const line = {
     v: 1,
@@ -171,12 +327,48 @@ async function main() {
   process.stdout.write('{}');
 }
 
+async function main() {
+  const raw = await readStdinUtf8();
+
+  if (isClaudeCodeMode(MODE)) {
+    await runPostToolUseAppendLog(raw, {
+      projectDirEnvOrder: ['CLAUDE_PROJECT_DIR', 'CODEBUDDY_PROJECT_DIR', 'QODER_PROJECT_DIR'],
+      editor: 'claude-code',
+      logTag: 'claude-code',
+      debugLogFile: 'claude-code-path-field.log',
+    });
+    return;
+  }
+
+  if (isQoderMode(MODE)) {
+    await runPostToolUseAppendLog(raw, {
+      projectDirEnvOrder: ['QODER_PROJECT_DIR', 'CLAUDE_PROJECT_DIR', 'CODEBUDDY_PROJECT_DIR'],
+      editor: 'qoder',
+      logTag: 'qoder',
+      debugLogFile: 'qoder-path-field.log',
+    });
+    return;
+  }
+
+  if (isCodeBuddyMode(MODE)) {
+    await runPostToolUseAppendLog(raw, {
+      projectDirEnvOrder: ['CODEBUDDY_PROJECT_DIR', 'CLAUDE_PROJECT_DIR', 'QODER_PROJECT_DIR'],
+      editor: 'codebuddy',
+      logTag: 'codebuddy',
+      debugLogFile: 'codebuddy-path-field.log',
+    });
+    return;
+  }
+
+  const sourceArg = MODE === 'tab' ? 'tab' : 'agent';
+  await runCursorHook(raw, sourceArg);
+}
+
 main().catch((e) => {
   try {
     const root = gitTopLevel(process.cwd()) ?? process.cwd();
     appendErrorLine(root, e instanceof Error ? e.message : String(e));
-  } catch {
-    // ignore
-  }
-  process.stdout.write('{}');
+  } catch {}
+  if (isPostToolUseCompatMode(MODE)) stdoutPostToolUseOk();
+  else process.stdout.write('{}');
 });

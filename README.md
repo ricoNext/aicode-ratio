@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Track **AI coding agent / tab** file-edit events on your machine (starting with **Cursor** hooks; other editors such as **Claude Code** are on the roadmap) and cross-reference them with Git commits to build **AI vs human** share reports (monthly / quarterly).
+Track **AI coding agent / tab** **saves and edits to files** on your machine (starting with **Cursor** hooks; other editors such as **Claude Code** are on the roadmap) and cross-reference them with Git commits to build **AI vs human** share reports (monthly / quarterly).
 
 ## What it is — and what it isn't
 
@@ -90,9 +90,9 @@ Shorter CLI alias: **`acr`** (same binary as `aicode-ratio`).
 
 ## Configuration
 
-`init` creates **`.aicode-ratio.json`** when no config exists. Legacy configs **`.agent-code-attribution.json`** and **`.cursor-attribution.json`** are still read if present.
+`init` creates **`.aicode-ratio.json`** when no config exists. Legacy config **`.cursor-attribution.json`** is still read if present.
 
-Environment override (first existing file wins): **`AICODE_RATIO_CONFIG`**, then **`AGENT_CODE_ATTRIBUTION_CONFIG`**, then **`CURSOR_ATTRIBUTION_CONFIG`**, then repo/home JSON — see `src/config/load-config.ts`.
+Environment override (first existing file wins): **`AICODE_RATIO_CONFIG`**, then **`CURSOR_ATTRIBUTION_CONFIG`**, then repo/home JSON — see `src/config/load-config.ts`.
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -117,18 +117,12 @@ Both ratios appear in every report.
 
 ## Privacy & `.gitignore`
 
-`init` appends ignore rules for current and legacy log paths, for example:
+`init` appends ignore rules for tracker logs under **`.aicode-ratio/`**, for example:
 
 ```gitignore
 .aicode-ratio/log.jsonl
 .aicode-ratio/log.jsonl.*
 .aicode-ratio/hook-errors.log
-.agent-code-attribution/log.jsonl
-.agent-code-attribution/log.jsonl.*
-.agent-code-attribution/hook-errors.log
-.cursor/cursor-attribution.log.jsonl
-.cursor/cursor-attribution.log.jsonl.*
-.cursor/cursor-attribution-hook-errors.log
 ```
 
 Logs store **paths and timestamps only** — no file bodies, prompts, or secrets.

@@ -13,18 +13,17 @@ function readJsonFile(path: string): Record<string, unknown> {
 /**
  * Resolve config: first existing path wins, then merge over defaults.
  *
- * Priority: `AICODE_RATIO_CONFIG` → `AGENT_CODE_ATTRIBUTION_CONFIG` → `CURSOR_ATTRIBUTION_CONFIG` →
+ * Priority: `AICODE_RATIO_CONFIG` → `CURSOR_ATTRIBUTION_CONFIG` →
  * repo `.aicode-ratio.json` → repo legacy files → home `.aicode-ratio.json` → home legacy files.
  */
 export function loadResolvedConfig(repoRoot: string): Config {
   const root = resolve(repoRoot);
   const aicodeEnv = process.env.AICODE_RATIO_CONFIG?.trim();
-  const agentEnv = process.env.AGENT_CODE_ATTRIBUTION_CONFIG?.trim();
   const cursorEnv = process.env.CURSOR_ATTRIBUTION_CONFIG?.trim();
 
   const candidates: Array<string | null> = [];
 
-  const envPaths = [aicodeEnv, agentEnv, cursorEnv];
+  const envPaths = [aicodeEnv, cursorEnv];
   for (const e of envPaths) {
     if (!e) continue;
     const abs = resolve(e);

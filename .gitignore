@@ -4,3 +4,8 @@ dist/
 *.log
 .DS_Store
 coverage/
+
+# aicode-ratio
+.aicode-ratio/log.jsonl
+.aicode-ratio/log.jsonl.*
+.aicode-ratio/hook-errors.log

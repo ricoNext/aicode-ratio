@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/aicode-ratio-append-log.mjs agent",
+        "timeout": 2
+      }
+    ],
+    "afterTabFileEdit": [
+      {
+        "command": "node .cursor/hooks/aicode-ratio-append-log.mjs tab",
+        "timeout": 2
+      }
+    ]
+  }
+}

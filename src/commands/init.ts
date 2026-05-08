@@ -3,8 +3,16 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
-import { getEditorAdapter, registeredEditorIds } from '../editors/registry.js';
-import { parseInitEditorIdsFromCommander } from './resolve-init-editors.js';
+import {
+  getEditorAdapter,
+  listEditorAdapters,
+  normalizeLegacyEditorId,
+  registeredEditorIds,
+} from '../editors/registry.js';
+import {
+  parseInitEditorIdsFromCommander,
+  resolveInitEditorsAfterCommander,
+} from './resolve-init-editors.js';
 import { appendGitignoreLines } from '../util/append-gitignore.js';
 import { getRepoRoot } from '../util/paths.js';
 import { ConfigSchema } from '../config/schema.js';
@@ -39,92 +47,135 @@ function mergeEnabledEditorsIntoPrimaryConfig(root: string, editorIds: string[])
 }
 
 function editorsSelectionHelp(): string {
-  const known = registeredEditorIds().join(', ');
+  const adapters = listEditorAdapters();
+  const flagHints = adapters.map((a) => `  --${a.id}              Install hooks for ${a.label}`).join('\n');
   return [
     '',
-    'You must choose which editors to install (Commander CLI only — no interactive prompts):',
-    '  acr init cursor                    # positional [editors...]',
+    'Commander options (non-interactive):',
+    flagHints,
     '  acr init --editors cursor         # comma-separated list',
-    '  acr init -y                       # shortcut: Cursor only (CI/scripts)',
-    `  Known ids: ${known}`,
+    '  acr init cursor                   # positional [editors...]',
+    '  acr init -y                       # Cursor only, no Inquirer (CI/scripts)',
+    '',
+    'Interactive: in a TTY, `acr init` with none of the above runs @inquirer/prompts to pick editors.',
+    `  Known ids: ${registeredEditorIds().join(', ')}`,
   ].join('\n');
 }
 
+/** Read `--<id>` booleans from parsed opts (dynamic per registered adapter). */
+function selectedEditorIdsFromOpts(opts: Record<string, unknown>): string[] {
+  const ids = registeredEditorIds().filter((id) => opts[id] === true);
+  if (opts.codebuddyIDE === true) ids.push('codebuddy');
+  return [...new Set(ids.map(normalizeLegacyEditorId))];
+}
+
 export function registerInit(program: Command): void {
-  program.addCommand(
-    new Command('init')
-      .description(
-        'Install editor adapters (hooks, scripts) for AI edit logging and configure .gitignore',
-      )
-      .addHelpText('after', editorsSelectionHelp())
-      .addArgument(
-        new Argument(
-          '[editors...]',
-          'space-separated editor ids (--editors overrides; omit only with -y — see examples below)',
-        ),
-      )
-      .option('--repo <path>', 'Repository root (default: current directory)', '.')
-      .option(
-        '--editors <list>',
-        'comma-separated editor ids (overrides positional [editors...])',
-      )
-      .option(
-        '-y, --yes',
-        'install Cursor hooks only without passing [editors...] / --editors (for CI/scripts)',
-      )
-      .action(
-        (
-          positionalEditors: string[],
-          options: { repo: string; editors?: string; yes?: boolean },
-          command: Command,
-        ) => {
-          const repoRoot = resolve(options.repo);
-          ensureGitRepo(repoRoot);
-          const root = getRepoRoot(repoRoot);
-
-          const editorIds = parseInitEditorIdsFromCommander({
-            editors: options.editors,
-            yes: options.yes,
-            positionalEditors: positionalEditors,
-          });
-          if (editorIds === null) {
-            command.error(['error: missing editor selection.', editorsSelectionHelp()].join('\n'));
-          }
-
-          const bundledHooksDir = join(dirname(fileURLToPath(import.meta.url)), 'hooks');
-
-          for (const id of editorIds) {
-            const adapter = getEditorAdapter(id);
-            if (!adapter) continue;
-            adapter.install({ repoRoot: root, bundledHooksDir });
-          }
-
-          const ig = new Set<string>();
-          for (const id of editorIds) {
-            const adapter = getEditorAdapter(id);
-            if (!adapter) continue;
-            for (const line of adapter.gitignoreLines) ig.add(line);
-          }
-          appendGitignoreLines(root, [...ig]);
-
-          if (!hasAnyConfig(root)) {
-            writePrimaryConfig(root, editorIds);
-          } else {
-            mergeEnabledEditorsIntoPrimaryConfig(root, editorIds);
-          }
-
-          console.log(`Initialized aicode-ratio in ${root}`);
-          console.log('');
-          console.log(`Editors: ${editorIds.join(', ')}`);
-          console.log('');
-          console.log('Next steps:');
-          console.log("  1. Confirm each editor's hooks point at the bundled append-log script.");
-          console.log(`     (Cursor: ${join(root, '.cursor', 'hooks.json')})`);
-          console.log('  2. Run: pnpm dlx aicode-ratio doctor');
-          console.log(
-            `  3. Trigger an agent edit and check the log path in ${CONFIG_FILENAME} (default: .aicode-ratio/log.jsonl)`,
-          );
-        },
+  const initCmd = new Command('init')
+    .description(
+      'Install editor adapters (hooks, scripts) for AI edit logging and configure .gitignore',
+    )
+    .addHelpText('after', editorsSelectionHelp())
+    .addArgument(
+      new Argument(
+        '[editors...]',
+        'space-separated ids, or omit in a TTY to pick editors via @inquirer/prompts',
       ),
+    )
+    .option('--repo <path>', 'Repository root (default: current directory)', '.')
+    .option(
+      '--editors <list>',
+      'comma-separated editor ids (overrides --<id> flags and positional args)',
+    )
+    .option(
+      '-y, --yes',
+      'skip Inquirer and install Cursor only (use when stdin is not a TTY or in scripts)',
+    );
+
+  for (const a of listEditorAdapters()) {
+    initCmd.option(`--${a.id}`, `Install hooks for ${a.label}`);
+  }
+
+  initCmd.option('--codebuddyIDE', 'Deprecated; same as --codebuddy.');
+
+  initCmd.action(
+    async (
+      positionalEditors: string[],
+      options: { repo: string; editors?: string; yes?: boolean },
+      command: Command,
+    ) => {
+      const repoRoot = resolve(options.repo);
+      ensureGitRepo(repoRoot);
+      const root = getRepoRoot(repoRoot);
+
+      const opts = command.opts() as Record<string, unknown>;
+      const selectedFromFlags = selectedEditorIdsFromOpts(opts);
+
+      const cliResolved = parseInitEditorIdsFromCommander({
+        editors: options.editors,
+        yes: options.yes,
+        positionalEditors: positionalEditors,
+        selectedFromFlags,
+      });
+
+      let editorIds: string[];
+      try {
+        const resolved = await resolveInitEditorsAfterCommander(cliResolved);
+        if (!resolved.ok) {
+          command.error(
+            [
+              'error: missing editor selection (stdin is not a TTY — cannot open @inquirer/prompts).',
+              editorsSelectionHelp(),
+            ].join('\n'),
+          );
+          return;
+        }
+        editorIds = resolved.ids;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'ExitPromptError') {
+          process.exitCode = 130;
+          return;
+        }
+        throw e;
+      }
+
+      const bundledHooksDir = join(dirname(fileURLToPath(import.meta.url)), 'hooks');
+
+      for (const id of editorIds) {
+        const adapter = getEditorAdapter(id);
+        if (!adapter) continue;
+        adapter.install({ repoRoot: root, bundledHooksDir });
+      }
+
+      const ig = new Set<string>();
+      for (const id of editorIds) {
+        const adapter = getEditorAdapter(id);
+        if (!adapter) continue;
+        for (const line of adapter.gitignoreLines) ig.add(line);
+      }
+      appendGitignoreLines(root, [...ig]);
+
+      if (!hasAnyConfig(root)) {
+        writePrimaryConfig(root, editorIds);
+      } else {
+        mergeEnabledEditorsIntoPrimaryConfig(root, editorIds);
+      }
+
+      console.log(`Initialized aicode-ratio in ${root}`);
+      console.log('');
+      console.log(`Editors: ${editorIds.join(', ')}`);
+      console.log('');
+      console.log('Next steps:');
+      console.log("  1. Confirm each editor's hooks point at the bundled append-log script.");
+      console.log(`     (Cursor: ${join(root, '.cursor', 'hooks.json')})`);
+      console.log(`     (CodeBuddy: ${join(root, '.codebuddy', 'settings.json')})`);
+      console.log(`     (Claude Code: ${join(root, '.claude', 'settings.json')})`);
+      console.log(`     (Qoder: ${join(root, '.qoder', 'settings.json')})`);
+      console.log('  2. Run: pnpm dlx aicode-ratio doctor');
+      console.log(
+        `  3. Trigger an agent edit and check the log path in ${CONFIG_FILENAME} (default: .aicode-ratio/log.jsonl)`,
+      );
+    },
   );
+
+  program.addCommand(initCmd);
 }

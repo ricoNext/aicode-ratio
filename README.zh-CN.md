@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-在本地追踪 **AI 编程智能体 / Tab** 的写盘事件（当前已接入 **Cursor** Hooks；**Claude Code** 等更多编辑器在路线图中），并与 Git 提交交叉比对，估算 **AI 写码占比** 类报表（按月 / 按季度）。
+在本地追踪 **AI 编程智能体 / Tab**「**改过、保存过哪些文件**」的记录（当前已接入 **Cursor** Hooks；**Claude Code** 等更多编辑器在路线图中），并与 Git 提交交叉比对，估算 **AI 写码占比** 类报表（按月 / 按季度）。
 
 ## 能做什么、不能做什么
 
@@ -88,9 +88,9 @@ pnpm dlx aicode-ratio report \
 
 ## 配置说明
 
-若仓库中尚不存在配置文件，`init` 会写入 **`.aicode-ratio.json`**。仍会读取旧版 **`.agent-code-attribution.json`**、**`.cursor-attribution.json`**（若存在）。
+若仓库中尚不存在配置文件，`init` 会写入 **`.aicode-ratio.json`**。仍会读取旧版 **`.cursor-attribution.json`**（若存在）。
 
-环境变量（按「首个存在的路径」生效）：**`AICODE_RATIO_CONFIG`** → **`AGENT_CODE_ATTRIBUTION_CONFIG`** → **`CURSOR_ATTRIBUTION_CONFIG`** → 仓库/用户目录下的 JSON；详见 `src/config/load-config.ts`。
+环境变量（按「首个存在的路径」生效）：**`AICODE_RATIO_CONFIG`** → **`CURSOR_ATTRIBUTION_CONFIG`** → 仓库/用户目录下的 JSON；详见 `src/config/load-config.ts`。
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -117,18 +117,12 @@ pnpm dlx aicode-ratio report \
 
 ## 隐私与 .gitignore
 
-`init` 会向 `.gitignore` 追加当前与旧版日志路径，例如：
+`init` 会为 **`.aicode-ratio/`** 下的日志追加忽略规则，例如：
 
 ```gitignore
 .aicode-ratio/log.jsonl
 .aicode-ratio/log.jsonl.*
 .aicode-ratio/hook-errors.log
-.agent-code-attribution/log.jsonl
-.agent-code-attribution/log.jsonl.*
-.agent-code-attribution/hook-errors.log
-.cursor/cursor-attribution.log.jsonl
-.cursor/cursor-attribution.log.jsonl.*
-.cursor/cursor-attribution-hook-errors.log
 ```
 
 日志仅记录**文件路径与时间戳** — **不会写入文件内容、提示词或密钥**。
@@ -139,7 +133,7 @@ pnpm dlx aicode-ratio report \
 
 请先运行 `acr doctor` 或 `pnpm dlx aicode-ratio doctor`。常见问题：
 
-- **日志不增长** — 确认 `init` 已写入 `.cursor/hooks.json`，并在编辑器中触发一次 Agent 写盘。
+- **日志不增长** — 确认 `init` 已写入 `.cursor/hooks.json`，并在编辑器中让 Agent **改存一次**受 Git 跟踪的文件。
 - **仓库根目录不对** — 在 Git 仓库根目录执行，或使用 `--repo <path>`。
 - **Hook 入参格式变更** — 请带上编辑器名称与版本开 issue；本工具支持多种候选字段名。
 

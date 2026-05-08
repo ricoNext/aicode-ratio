@@ -57,7 +57,10 @@ export function registerUninstall(program: Command): void {
     .option('-y, --yes', 'Skip confirmation and non-interactive file operations')
     .option('--keep-config', `Do not delete ${CONFIG_FILENAME} in the repo root`)
     .option('--keep-gitignore', 'Do not remove the # aicode-ratio block from .gitignore')
-    .option('--keep-hook-script', 'Do not delete hook scripts under .cursor/hooks/')
+    .option(
+      '--keep-hook-script',
+      'Do not delete hook scripts under .cursor/hooks/, .codebuddy/hooks/, .claude/hooks/, or .qoder/hooks/ (for selected editors)',
+    )
     .action(
       async (options: {
         repo: string;
@@ -103,18 +106,45 @@ export function registerUninstall(program: Command): void {
           logLines.push(...lines);
         }
 
-        const hooksDir = join(root, '.cursor', 'hooks');
-        const hookPaths = [
-          join(hooksDir, HOOK_SCRIPT_NAME),
-          ...LEGACY_HOOK_SCRIPTS.map((n) => join(hooksDir, n)),
-        ];
+        const editorIdsSet = new Set(editorIds);
 
         if (!options.keepHookScript) {
-          for (const p of hookPaths) {
-            if (!existsSync(p)) continue;
-            unlinkSync(p);
-            console.log(`Deleted ${p}`);
-            didSomething = true;
+          if (editorIdsSet.has('cursor')) {
+            const hooksDir = join(root, '.cursor', 'hooks');
+            const hookPaths = [
+              join(hooksDir, HOOK_SCRIPT_NAME),
+              ...LEGACY_HOOK_SCRIPTS.map((n) => join(hooksDir, n)),
+            ];
+            for (const p of hookPaths) {
+              if (!existsSync(p)) continue;
+              unlinkSync(p);
+              console.log(`Deleted ${p}`);
+              didSomething = true;
+            }
+          }
+          if (editorIdsSet.has('codebuddy')) {
+            const codebuddyHook = join(root, '.codebuddy', 'hooks', HOOK_SCRIPT_NAME);
+            if (existsSync(codebuddyHook)) {
+              unlinkSync(codebuddyHook);
+              console.log(`Deleted ${codebuddyHook}`);
+              didSomething = true;
+            }
+          }
+          if (editorIdsSet.has('claude-code')) {
+            const claudeHook = join(root, '.claude', 'hooks', HOOK_SCRIPT_NAME);
+            if (existsSync(claudeHook)) {
+              unlinkSync(claudeHook);
+              console.log(`Deleted ${claudeHook}`);
+              didSomething = true;
+            }
+          }
+          if (editorIdsSet.has('qoder')) {
+            const qoderHook = join(root, '.qoder', 'hooks', HOOK_SCRIPT_NAME);
+            if (existsSync(qoderHook)) {
+              unlinkSync(qoderHook);
+              console.log(`Deleted ${qoderHook}`);
+              didSomething = true;
+            }
           }
         }
 

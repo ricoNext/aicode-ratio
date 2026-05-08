@@ -14,7 +14,7 @@ export default defineConfig({
    * Bundled CJS deps that `require()` Node builtins break under the ESM bundle shim.
    * Keep these as runtime dependencies from `node_modules`.
    */
-  external: ['commander', 'micromatch'],
+  external: ['commander', 'micromatch', /@inquirer\//],
   noExternal: ['zod'],
   async onSuccess() {
     await mkdir(join('dist', 'hooks'), { recursive: true });

@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { tryGetGitRepoRoot } from '../util/paths.js';
 import { loadResolvedConfig } from '../config/load-config.js';
-import { getEditorAdapter } from '../editors/registry.js';
+import { getEditorAdapter, normalizeLegacyEditorId } from '../editors/registry.js';
 
 function checkNode(): void {
   const major = Number(process.versions.node.split('.')[0]);
@@ -49,7 +49,8 @@ export function registerDoctor(program: Command): void {
       console.log(`[ok] enabledEditors: ${cfg.enabledEditors.join(', ')}`);
 
       for (const id of cfg.enabledEditors) {
-        const adapter = getEditorAdapter(id);
+        const nid = normalizeLegacyEditorId(id);
+        const adapter = getEditorAdapter(nid);
         if (!adapter) {
           console.warn(`[warn] Unknown editor id in config.enabledEditors: ${id}`);
           continue;

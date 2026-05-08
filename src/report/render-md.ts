@@ -90,7 +90,7 @@ function csvEscape(s: string): string {
 function renderMd(result: AggregateResult, opts: RenderOptions): string {
   const { params } = opts;
   const lines: string[] = [];
-  lines.push('# AI Agent 写盘归因报表', '');
+  lines.push('# AI Agent 文件修改归因报表', '');
   lines.push('## 统计口径', '');
   lines.push(
     '- **口径 A（按 commit）**：在所选时间窗内，`commitsWithTouch / commitsTotal`，表示至少有一个变更文件在对应 commit 时间窗内被 Cursor 日志命中的提交占比。',

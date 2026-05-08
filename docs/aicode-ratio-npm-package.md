@@ -1,14 +1,14 @@
-# AI Agent 写盘归因 npm 包实现方案（aicode-ratio）
+# AI Agent 文件修改归因 npm 包实现方案（aicode-ratio）
 
 本文档描述 npm 包 **aicode-ratio** 的产品形态、目录结构、配置、日志、Hooks 安装、`report` 算法与发布策略，供实现与评审使用。目标是以统一模型覆盖多种 AI 编码助手（当前以 **Cursor** 为首个接入；**Claude Code** 等可逐步扩展）。
 
 ## 1. 产品定位与边界
 
-**一句话**：在本机通过各编辑器提供的 Hooks 持续记录 **Agent / Tab 写盘事件**，再用 CLI 与 **Git 提交**在可配置时间窗内做**文件级交叉**，输出月/季报表（JSON / CSV / Markdown）。
+**一句话**：在本机通过各编辑器提供的 Hooks 持续记录 **Agent / Tab 对文件的修改**（路径与时间等），再用 CLI 与 **Git 提交**在可配置时间窗内做**文件级交叉**，输出月/季报表（JSON / CSV / Markdown）。
 
 **明确承诺**：
 
-- 可统计：某时间窗内，Git 变更文件与「本机 Agent 写盘日志」的交叉覆盖（commit 维度、文件维度，可配置）。
+- 可统计：某时间窗内，Git 变更文件与「本机 **Agent 改文件日志**」的交叉覆盖（commit 维度、文件维度，可配置）。
 - Tab 与 Agent 可分源统计（依赖 `afterFileEdit` 与 `afterTabFileEdit`）。
 
 **明确不承诺**：
@@ -67,9 +67,9 @@ aicode-ratio/
 
 ### 3.1 查找优先级
 
-1. 环境变量 `AICODE_RATIO_CONFIG` 指向的 JSON 路径（未设置时依次尝试 `AGENT_CODE_ATTRIBUTION_CONFIG`、`CURSOR_ATTRIBUTION_CONFIG`，兼容旧包）。
-2. 仓库根 `.aicode-ratio.json`，其次 `.agent-code-attribution.json`、`.cursor-attribution.json`。
-3. 用户目录 `~/.aicode-ratio.json`，其次同上两份兼容名。
+1. 环境变量 `AICODE_RATIO_CONFIG` 指向的 JSON 路径（未设置时依次尝试 `CURSOR_ATTRIBUTION_CONFIG`，兼容旧包）。
+2. 仓库根 `.aicode-ratio.json`，其次 `.cursor-attribution.json`。
+3. 用户目录 `~/.aicode-ratio.json`，其次 `~/.cursor-attribution.json`。
 4. 内置默认值。
 
 ### 3.2 建议 Schema（`version: 1`）
@@ -90,7 +90,7 @@ aicode-ratio/
 
 ## 4. 日志格式（jsonl）
 
-**路径**：默认 `<repoRoot>/.aicode-ratio/log.jsonl`，**必须**加入 `.gitignore`（`init` 亦会忽略旧版 `.cursor/` 日志路径以便迁移）。
+**路径**：默认 `<repoRoot>/.aicode-ratio/log.jsonl`，**必须**加入 `.gitignore`（`init` 会追加 `.aicode-ratio/` 下的相关规则）。
 
 **每行一个 JSON 对象**：
 
@@ -164,12 +164,6 @@ aicode-ratio/
 .aicode-ratio/log.jsonl
 .aicode-ratio/log.jsonl.*
 .aicode-ratio/hook-errors.log
-.agent-code-attribution/log.jsonl
-.agent-code-attribution/log.jsonl.*
-.agent-code-attribution/hook-errors.log
-.cursor/cursor-attribution.log.jsonl
-.cursor/cursor-attribution.log.jsonl.*
-.cursor/cursor-attribution-hook-errors.log
 ```
 
 ## 6. `report` 命令
