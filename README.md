@@ -1,7 +1,17 @@
-# aicode-ratio
+  
+<p align="center">
+  <a href="https://github.com/ricoNext/aicode-ratio">
+    <picture>
+      <img src="logo.png" alt="aicode-ratio logo">
+    </picture>
+  </a>
+</p>
+
+<p align="center">The open source AI coding agent.</p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/aicode-ratio"><img alt="npm" src="https://img.shields.io/npm/v/aicode-ratio?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/aicode-ratio"><img alt="npm" src="https://img.shields.io/pnpm/v/aicode-ratio?style=flat-square" /></a>
+   <a href="https://github.com/ricoNext/aicode-ratio/actions/workflows/publish-npm.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/ricoNext/aicode-ratio/publish-npm.yml?style=flat-square&branch=main" /></a>
 </p>
 
 [简体中文](README.zh-CN.md)
