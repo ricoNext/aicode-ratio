@@ -44,14 +44,15 @@ overall package design.
 ## Quick start (about 1 minute)
 
 ```bash
-# One-time setup in your repo
-pnpm dlx aicode-ratio init
+# One-time setup — must name editors (examples: Cursor only)
+pnpm dlx aicode-ratio init -y
+# or: pnpm dlx aicode-ratio init cursor
 
 # Verify hooks and log path
 pnpm dlx aicode-ratio doctor
 ```
 
-In a normal terminal, **`init` shows an interactive checklist** (Inquirer) after Commander parses the command. Skip it with **`acr init cursor`**, **`acr init --editors cursor`**, **`acr init -y`**, or **`pnpm dlx aicode-ratio init cursor`**.
+Pick editors on the **command line** (Commander only — no prompts): **`acr init cursor`**, **`acr init --editors cursor`**, or **`acr init -y`** (Cursor only; use in scripts/CI). **`acr init`** alone prints an error with examples; **`acr init --help`** lists the same.
 
 Then use your editor’s agent (e.g. Cursor Agent or Tab) to edit a file — events append to the path in `.aicode-ratio.json` (default: `.aicode-ratio/log.jsonl`).
 
@@ -77,7 +78,7 @@ Merge commits are excluded by default; pass `--include-merges` if you need them.
 
 | Command | Description |
 |---------|-------------|
-| `init` | Install hooks: Commander options + `[editors...]`; TTY uses Inquirer checklist |
+| `init` | Install hooks via Commander: pass `[editors...]`, `--editors`, or `-y` |
 | `doctor` | Check Node, git, hooks, log file |
 | `report` | Build attribution report |
 | `uninstall` | Remove this package’s hook entries |

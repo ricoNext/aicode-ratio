@@ -42,14 +42,15 @@ CI 使用 `pnpm install --frozen-lockfile`（pnpm 下与 `npm ci` 等价的严�
 ## 快速开始（约 1 分钟）
 
 ```bash
-# 在仓库中一次性初始化
-pnpm dlx aicode-ratio init
+# 在仓库中一次性初始化（须指定编辑器，以下为仅 Cursor 的示例）
+pnpm dlx aicode-ratio init -y
+# 或：pnpm dlx aicode-ratio init cursor
 
 # 检查 hooks 与日志路径
 pnpm dlx aicode-ratio doctor
 ```
 
-在普通终端里，`init` 会先由 **Commander** 解析 `[editors...]` / 选项，再在 TTY 下弹出 **Inquirer** 多选清单（目前仅 Cursor）。无需交互时可用：**`acr init cursor`**、**`acr init --editors cursor`**、**`acr init -y`**。
+`init` **只通过 Commander 的命令行**选择编辑器（位置参数 `[editors...]`、`--editors`、或 **`-y`** 仅装 Cursor）。单独运行 **`acr init`** 会报错并提示示例；**`acr init --help`** 末尾也会给出说明。
 
 之后在 Cursor 等已接入的编辑器中让 Agent / Tab 编辑文件 — 事件会写入 `.aicode-ratio.json` 中的 `logPath`（默认：`.aicode-ratio/log.jsonl`）。
 
@@ -75,7 +76,7 @@ pnpm dlx aicode-ratio report \
 
 | 命令 | 说明 |
 | --- | --- |
-| `init` | 安装 hooks：`[editors...]` / 选项由 Commander 解析；TTY 下用 Inquirer 多选 |
+| `init` | 安装 hooks：须用 Commander 指定 `[editors...]` / `--editors` / `-y` |
 | `doctor` | 检查环境：Node、git、hooks、日志 |
 | `report` | 生成归属报告 |
 | `uninstall` | 移除此包写入的 hook 配置 |
