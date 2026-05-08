@@ -1,5 +1,9 @@
 # aicode-ratio
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/aicode-ratio"><img alt="npm" src="https://img.shields.io/npm/v/aicode-ratio?style=flat-square" /></a>
+</p>
+
 [简体中文](README.zh-CN.md)
 
 **aicode-ratio** is a command-line tool for estimating **AI Code Ratio** over a period: how much of your code changes overlap editor-side AI activity versus plain Git history.
@@ -264,6 +268,14 @@ Reports show **ratio A**, **ratio B**, and when applicable **`byLogGitUser`** to
 ---
 
 ## Appendix: develop and contribute
+
+### Versions & changelog (Changesets)
+
+Releases and `CHANGELOG.md` are managed with [Changesets](https://github.com/changesets/changesets). See **[.changeset/README.md](.changeset/README.md)** for the full workflow.
+
+- **`pnpm changeset`**: add a changeset (creates `.changeset/*.md`) whenever you ship user-facing changes; commit it with your PR.
+- **`pnpm changeset:version`**: consumes merged changesets, **bumps `package.json` `version`**, and **updates the root `CHANGELOG.md`** via `@changesets/changelog-github` (then removes the consumed files).
+- **Commit & push**, then **`git tag v<version>`** and **`git push origin v<version>`** to trigger **`.github/workflows/publish-npm.yml`** (`npm publish`).
 
 Local development and CI: `pnpm install`, `pnpm run build`, `pnpm test`; CI uses `pnpm install --frozen-lockfile`.
 

@@ -1,6 +1,16 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- 添加自动化配置, 无功能调整
+
 ## [Unreleased]
+
+### Chore
+
+- 接入 **Changesets**（`@changesets/cli`、`@changesets/changelog-github`）：用 `pnpm changeset` 记录待发布变更，用 `pnpm changeset:version` 生成版本号与 `CHANGELOG` 条目；详见 `.changeset/README.md`。
 
 ### Fixed
 

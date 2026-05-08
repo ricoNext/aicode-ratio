@@ -270,5 +270,13 @@ pnpm dlx aicode-ratio report \
 
 ## 附录：本地开发与参与贡献
 
+### 版本与 Changelog（Changesets）
+
+发版与 `CHANGELOG.md` 的维护使用 [Changesets](https://github.com/changesets/changesets)。流程说明见 **[.changeset/README.md](.changeset/README.md)**。
+
+- **`pnpm changeset`**：为即将发布的改动添加一条 changeset（生成 `.changeset/*.md`），与代码一起提交/合并。
+- **`pnpm changeset:version`**：根据已合并的 changeset **提升 `package.json` 的 `version`**，并用 `@changesets/changelog-github` **更新根目录 `CHANGELOG.md`**（随后删除已消费的 changeset 文件）。
+- 审阅 diff 后 **提交并推送**，再 **`git tag v<版本>`** 且 **`git push origin v<版本>`**，由 **`.github/workflows/publish-npm.yml`** 触发 **npm publish**。
+
 本仓库开发与 CI：`pnpm install`、`pnpm run build`、`pnpm test`；CI 使用 `pnpm install --frozen-lockfile`。
 
