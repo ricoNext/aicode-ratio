@@ -1,0 +1,13 @@
+import type { Config } from './schema.js';
+
+export const DEFAULTS: Config = {
+  version: 1,
+  logPath: '.aicode-ratio/log.jsonl',
+  preCommitHours: 72,
+  postCommitHours: 2,
+  gitDateField: 'committer',
+  ignoreLogPathPrefixes: ['node_modules/', 'dist/', '.git/'],
+  ignoreLogGlobs: [],
+  enabledEditors: ['cursor'],
+  sources: { agent: true, tab: true },
+};
