@@ -89,6 +89,9 @@
 ```bash
 npm install -g aicode-ratio
 # 或：pnpm add -g aicode-ratio
+# 或：npm install -g aicode-ratio
+# 或：yarn global add aicode-ratio
+# 或：bun add -g aicode-ratio
 ```
 
 全局安装后，可使用 **`acr`** 或 **`aicode-ratio`**（同一入口）。
@@ -170,7 +173,7 @@ pnpm dlx aicode-ratio doctor
 
 `init` 完成后，仓库里已经生成各编辑器可识别的 command 文件（例如 **`.[编辑器]/commands/aicode-ratio-report.md`**，与你在 `init` 里勾选的编辑器一致）。
 
-因此生成报告时 **不必先手写整条 `report` 命令**：在对应编辑器的聊天里输入 **`/`**，选择 **`aicode-ratio-report`**，即可把「读说明 → 与用户确认或询问统计区间 → 在集成终端执行 `report` → 产出 Markdown」交给 **Agent**。命令说明里**不设**默认 `--since` / `--until`；若你在消息里写了时间段，Agent 会先换算成 `YYYY-MM-DD` 并向你**复述确认**；若没写清，Agent 会按说明**依次询问**起始日与结束边界（半开区间）。**若始终无法识别或确认时间范围，则不得执行 `report`、不得生成报表文件或编造占比结论**，只能请你先给出明确的起止日期。输出目录仍为 **`.aicode-ratio/reports/`**。请始终在 **该仓库根** 下执行。
+因此生成报告时 **不必先手写整条 `report` 命令**：在对应编辑器的聊天里输入 **`/`**，选择 **`aicode-ratio-report`**，即可把「读说明 → 与用户确认或询问统计区间 → 在集成终端执行 `report` → 产出 Markdown」交给 **Agent**。命令说明里**不设**默认 `--since` / `--until`；若你在消息里写了时间段，Agent 会先换算成 `YYYY-MM-DD` 并向你**复述确认**；若没写清，Agent 会按说明**依次询问**起始日与结束边界（半开区间）。**自然语言约定**：像「本月」「这周」「最近几天」且未说「整月 / 到月底」时，应按 **周期起点（含）→ 含今天在 UTC 下的整天** 来设 `until`（半开区间下即 **`until` = 当前 UTC 日历日的次日**），不要把「本月」默认当成「当月 1 号到下月 1 号」的整月；只有在你明确要 **整月 / 整周** 时才用「下一段起点」作 `until`。**若始终无法识别或确认时间范围，则不得执行 `report`、不得生成报表文件或编造占比结论**，只能请你先给出明确的起止日期。输出目录仍为 **`.aicode-ratio/reports/`**。请始终在 **该仓库根** 下执行。
 
 这是与下文「终端里自己跑 `report`」**等价**的流程，一般 **更省事、更少抄错参数**。
 
@@ -188,7 +191,7 @@ pnpm dlx aicode-ratio doctor
 
 **必须在 Git 仓库根执行**（或使用 **`--repo <path>`** 指向根目录）。
 
-**时间范围**：`--since` / `--until` 为 **半开区间** `[since, until)`；使用 **`YYYY-MM-DD`** 时按 **UTC** 日界，**`until` 当天不计入**。例如统计 2026 年 4 月（UTC）：`--since 2026-04-01 --until 2026-05-01`。
+**时间范围**：`--since` / `--until` 为 **半开区间** `[since, until)`；使用 **`YYYY-MM-DD`** 时按 **UTC** 日界，**`until` 当天不计入**。例如 **2026 年 4 月整月**（UTC）：`--since 2026-04-01 --until 2026-05-01`。若只要 **4 月 1 日起到「今天」**（仍在 4 月内），则 `since` 仍为 `2026-04-01`，`until` 取 **「今天」UTC 日期的下一天**（例如 4 月 8 日当天跑报表时常为 `--until 2026-04-09`）。
 
 **推荐输出路径**（与日志同目录树）：
 

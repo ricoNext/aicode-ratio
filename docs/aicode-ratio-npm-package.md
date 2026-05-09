@@ -119,7 +119,7 @@ aicode-ratio/
 
 - 合并或创建 `.cursor/hooks.json`。
 - 将 `append-log.mjs` **复制**到 `.cursor/hooks/aicode-ratio-append-log.mjs`（带版本注释），hooks 只引用**项目相对路径**。
-- 为所选编辑器写入 **`aicode-ratio-report`** slash 命令（Markdown）：`.cursor/commands/`、`.claude/commands/`、`.codebuddy/commands/`、`.qoder/commands/` 之一或多项；内容要求 Agent **不得**在未确认 `--since`/`--until` 前执行 `report`（无预填默认月；占位符命令，需从用户消息解析或交互询问后再替换执行）；**若始终无法识别或确认时间范围，则不得生成报表**。
+- 为所选编辑器写入 **`aicode-ratio-report`** slash 命令（Markdown）：`.cursor/commands/`、`.claude/commands/`、`.codebuddy/commands/`、`.qoder/commands/` 之一或多项；内容要求 Agent **不得**在未确认 `--since`/`--until` 前执行 `report`（无预填默认月；占位符命令，需从用户消息解析或交互询问后再替换执行）；**若始终无法识别或确认时间范围，则不得生成报表**。说明中约定：像「本月」且未说「整月 / 到月底」时，按 **月初至「今天」（UTC）** 换算半开区间（`until` 为「今天」UTC 日期的次日），勿默认用「下月 1 日」当整月右边界。
 - 按需更新 `.gitignore`（仅个人模式且用户确认或传参时追加主日志与轮转；团队模式不写日志相关忽略项）。
 
 ### 5.2 `hooks.json` 合并策略

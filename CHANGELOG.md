@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3 - 2026-05-08
+
+### Fixed
+
+- Slash 命令 **`aicode-ratio-report`** 模板与 README / 文档：当用户说「本月 / 这周 / 最近几天」且**未**明确要求整月或到月底时，按 **周期起点（含）至 UTC「今天」整日** 换算半开区间（`until` 取 **当前 UTC 日历日的次日**），避免 Agent 误将「本月」映射成「当月 1 日 → 下月 1 日」的全月范围；**整自然月 / 整周 / 上月** 等仍使用「下一段起点」作为 `until`。
+
+### Documentation
+
+- 同步更新 `README.md`、`README.zh-CN.md`、`docs/aicode-ratio-npm-package.md` 中的时间范围说明与示例。
+
 ## 0.1.2
 
 ### Patch Changes

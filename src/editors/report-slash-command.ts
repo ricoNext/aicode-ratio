@@ -13,7 +13,10 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-/** Half-open UTC month `[since, until)` for `report --since/--until`, plus a `YYYY-MM` stem for an output file name. */
+/**
+ * Full calendar month in UTC: `[since, until)` from the 1st through the last instant of that month.
+ * Slash-command docs use **month-to-date** by default for phrases like「本月」; this helper is for tests / callers that need an entire closed month.
+ */
 export function defaultReportMonthUtc(): { since: string; until: string; stem: string } {
   const d = new Date();
   const y = d.getUTCFullYear();
@@ -47,7 +50,10 @@ export function buildAicodeRatioReportCommandMarkdown(): string {
     '',
     '## 如何取得起止时间',
     '',
-    '1. **先读当轮用户消息**：若已给出可映射到日历的区间（例如「2026 年 4 月」「4/1 到 4/30」「本月 / 上月」等），把它**换算**为 `report` 所需的 **`--since`（含）** 与 **`--until`（不含）** 的 `YYYY-MM-DD`（半开区间 `[since, until)`，`until` 当天不计入；统计整月 UTC 时常用 `since=当月1日`、`until=下月1日`）。',
+    '1. **先读当轮用户消息**：若已给出可映射到日历的区间，把它**换算**为 `report` 所需的 **`--since`（含）** 与 **`--until`（不含）** 的 `YYYY-MM-DD`（半开区间 `[since, until)`，`until` 当天不计入）。**必须先区分「截止到当前」还是「完整自然段」**，不要一律套「整月」：',
+    '   - **「本月」「这周」「最近 N 天」等**（没有「整月」「到月底」「4/1 到 4/30」等把右边界钉死在段尾的表述）：按 **从该段起点统计到今天（UTC 日历含今天整天）** 理解。`since` 取片段起点（如本月 = **`当月 1 日`**；「这周」与用户口头或本地习惯对齐后再定起点）；`until` 取 **`当前 UTC 日期的下一天` 的 `YYYY-MM-DD`**（右开区间才能把「今天」算进去）。**禁止**把「给我生成本月报表」默认翻译成「当月 1 日 → 下月 1 日」的全月区间。',
+    '   - **完整自然月 / 自然周 / 明确到段末**（如「2026 年 4 月整月」「整个四月」「上月 / 上周」通常指**上一整段**；「统计到 4 月 30 号」且含当日整天）：`since` 为该段 **首日**，`until` 为 **紧邻下一段的首日**（整月 UTC 典型写法：`since=当月1日`、`until=下月1日`；整周同理换算为半开区间）。',
+    '   - **用户直接写了起止日**：换算为半开区间；若要包含结束日当天，则 `until` 至少为 **结束日的次日** `YYYY-MM-DD`。',
     '2. **若消息里没有可执行的时间段**（或只有「生成报表」等模糊说法）：**必须用交互方式向用户询问**，且**先问再跑命令**：',
     '   - 「请提供统计的**起始日期** `--since`：哪一天起算（**含**该日）？请用 `YYYY-MM-DD`，按 UTC 日界。」',
     '   - 「请提供统计的**结束边界** `--until`：哪一天起**不算**在区间内（**不含**该日）？请用 `YYYY-MM-DD`。若要包含到某日整天，通常应把 `until` 设为**次日**的 `YYYY-MM-DD`。」',
@@ -58,7 +64,8 @@ export function buildAicodeRatioReportCommandMarkdown(): string {
     '',
     '- `--since` / `--until` 为半开区间：`until` **不包含**。',
     '- 使用 `YYYY-MM-DD` 时按 **UTC** 午夜边界理解。',
-    '- `--out` 建议：`' + AICODE_RATIO_REPORTS_DIR_REL + '/aicode-ratio-<与区间一致的 YYYY-MM 或其它 stem>.md`（先 `mkdir -p`）。',
+    '- **口语默认**：「本月 / 本周 / 最近几天」→ **起点（含）→含今天在 UTC 下的整天** → `until` = **「今天」在 UTC 的日历日 + 1 天**；只有用户明确要 **整月 / 整周 / 到月底** 时，才把 `until` 放到 **下一段起点**（如整月则下月 1 日）。',
+    '- `--out` 建议：`' + AICODE_RATIO_REPORTS_DIR_REL + '/aicode-ratio-<与区间一致的 YYYY-MM 或其它 stem>.md`（先 `mkdir -p`）；**月初至今**的报表也可用 `YYYY-MM-月初至今` 等 stem，避免与整月报表混淆。',
     '',
     '## 一键命令（占位符须替换后再执行）',
     '',
@@ -76,7 +83,7 @@ export function buildAicodeRatioReportCommandMarkdown(): string {
       '/aicode-ratio-<OUTPUT_STEM>.md"',
     '```',
     '',
-    '将 `<SINCE_YYYY-MM-DD>`、`<UNTIL_YYYY-MM-DD>`、`<OUTPUT_STEM>` 替换为与用户确认后的值（`OUTPUT_STEM` 常用统计区间对应的 `YYYY-MM`）。',
+    '将 `<SINCE_YYYY-MM-DD>`、`<UNTIL_YYYY-MM-DD>`、`<OUTPUT_STEM>` 替换为与用户确认后的值（`OUTPUT_STEM` 常用 `YYYY-MM`；若为**月初至今**可加后缀如 `-mtd` 以免与整月文件混淆）。',
     '',
     '**CLI 写法**：已全局安装时可将 `npx aicode-ratio@latest` 换成 `acr`；本仓库若已加 devDependency，也可用 `pnpm exec aicode-ratio` / `pnpm dlx aicode-ratio`。',
     '',

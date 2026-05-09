@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('aicode-ratio')
   .description('Track AI agent / tab edits and cross-reference with Git for attribution reports')
-  .version('0.1.0');
+  .version('0.1.3');
 
 registerInit(program);
 registerReport(program);

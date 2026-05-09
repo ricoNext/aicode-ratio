@@ -164,7 +164,7 @@ Use **Agent / Tab** in a hooked editor to edit and save; events append to the ri
 
 After **`init`**, the repo contains editor **command** files (e.g. **`.[editor]/commands/aicode-ratio-report.md`**) for the editors you installed.
 
-You do **not** have to type a full `report` line first: in chat, type **`/`** and choose **`aicode-ratio-report`** so the agent follows the doc: **confirm or ask for the date range**, then run **`report`** and produce Markdown. The file **does not** embed default **`--since` / `--until`**. If you already stated a range in natural language, the agent should map it to **`YYYY-MM-DD`** and **read it back for confirmation**; if unclear, the agent should **ask** for start (inclusive) and end boundary (exclusive half-open interval). **If a range still cannot be identified or confirmed, the agent must not run `report`, must not create a report file, and must not invent ratios** — only ask you for an explicit range. Default output location is still **`.aicode-ratio/reports/`**. Run from the **repository root**.
+You do **not** have to type a full `report` line first: in chat, type **`/`** and choose **`aicode-ratio-report`** so the agent follows the doc: **confirm or ask for the date range**, then run **`report`** and produce Markdown. The file **does not** embed default **`--since` / `--until`**. If you already stated a range in natural language, the agent should map it to **`YYYY-MM-DD`** and **read it back for confirmation**; if unclear, the agent should **ask** for start (inclusive) and end boundary (exclusive half-open interval). **Natural-language default:** phrases like **“this month” / “this week” / “last few days”** without **“full month” / “through month-end”** should mean **from the period start (inclusive) through today (inclusive in UTC day terms)** — in half-open form, set **`until` to the UTC calendar day *after* “today”**; do **not** default “this month” to **1st → next month 1st** unless you clearly want a **closed calendar month**. **If a range still cannot be identified or confirmed, the agent must not run `report`, must not create a report file, and must not invent ratios** — only ask you for an explicit range. Default output location is still **`.aicode-ratio/reports/`**. Run from the **repository root**.
 
 This is equivalent to running **`report`** yourself in a terminal, often **faster and less error-prone**.
 
@@ -181,7 +181,7 @@ For CI, no agent, or fully custom flags.
 
 Must run from the **Git root** (or pass **`--repo <path>`**).
 
-**Time range:** **`--since` / `--until`** are half-open **`[since, until)`**; with **`YYYY-MM-DD`** use **UTC** day boundaries; **`until` is exclusive**. Example — all of April 2026 UTC: `--since 2026-04-01 --until 2026-05-01`.
+**Time range:** **`--since` / `--until`** are half-open **`[since, until)`**; with **`YYYY-MM-DD`** use **UTC** day boundaries; **`until` is exclusive**. Example — **full** April 2026 UTC: `--since 2026-04-01 --until 2026-05-01`. For **April 1 through “today”** (still in April), keep `since` at `2026-04-01` and set `until` to the **UTC calendar day after “today”** (e.g. if “today” is 8 Apr UTC, often `--until 2026-04-09`).
 
 **Suggested output path:**
 

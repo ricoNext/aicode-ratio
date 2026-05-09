@@ -26,6 +26,7 @@ describe('buildAicodeRatioReportCommandMarkdown', () => {
     expect(md).toContain('禁止');
     expect(md).toContain('始终无法识别');
     expect(md).toContain('不能生成报表');
+    expect(md).toContain('UTC 日期的下一天');
     expect(md).not.toMatch(/--since 20\d{2}-\d{2}-\d{2}/);
     expect(md).not.toMatch(/--until 20\d{2}-\d{2}-\d{2}/);
   });
