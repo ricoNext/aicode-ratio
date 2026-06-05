@@ -71,4 +71,10 @@ describe('Codex config.toml hooks feature merge', () => {
       '[features]\njs_repl = false\n\nhooks = true\n[mcp_servers.x]\n',
     );
   });
+
+  it('handles table headers with comments', () => {
+    expect(
+      ensureCodexHooksFeatureEnabled('[features] # toggles\njs_repl = false\n\n[mcp_servers.x] # local\n'),
+    ).toBe('[features] # toggles\njs_repl = false\n\nhooks = true\n[mcp_servers.x] # local\n');
+  });
 });

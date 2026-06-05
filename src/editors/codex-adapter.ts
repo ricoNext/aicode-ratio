@@ -23,13 +23,16 @@ function configAbs(repoRoot: string): string {
   return join(repoRoot, CONFIG_REL);
 }
 
+const FEATURES_HEADER_RE = /^\s*\[features\]\s*(?:#.*)?$/;
+const TABLE_HEADER_RE = /^\s*\[[^\]]+\]\s*(?:#.*)?$/;
+
 export function ensureCodexHooksFeatureEnabled(raw: string): string {
   const normalized = raw.replace(/\r\n/g, '\n');
   const lines = normalized.length > 0 ? normalized.split('\n') : [];
   const hadTrailingNewline = normalized.endsWith('\n');
   if (hadTrailingNewline) lines.pop();
 
-  const featureHeaderIdx = lines.findIndex((line) => line.trim() === '[features]');
+  const featureHeaderIdx = lines.findIndex((line) => FEATURES_HEADER_RE.test(line));
   if (featureHeaderIdx < 0) {
     const prefix = lines.length > 0 ? [...lines, ''] : [];
     return [...prefix, '[features]', 'hooks = true', ''].join('\n');
@@ -37,8 +40,7 @@ export function ensureCodexHooksFeatureEnabled(raw: string): string {
 
   let nextHeaderIdx = lines.length;
   for (let i = featureHeaderIdx + 1; i < lines.length; i += 1) {
-    const trimmed = lines[i]!.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    if (TABLE_HEADER_RE.test(lines[i]!)) {
       nextHeaderIdx = i;
       break;
     }
@@ -66,7 +68,7 @@ function runDoctor(ctx: EditorDoctorContext): void {
   if (!existsSync(cp)) console.warn(`[warn] [codex] Missing ${cp} — run init`);
   else {
     const raw = readFileSync(cp, 'utf8');
-    if (/^\s*hooks\s*=\s*true\s*$/m.test(raw) && /^\s*\[features\]\s*$/m.test(raw)) {
+    if (/^\s*hooks\s*=\s*true\s*(?:#.*)?$/m.test(raw) && FEATURES_HEADER_RE.test(raw)) {
       console.log('[ok] [codex] config.toml enables hooks feature');
     } else {
       console.warn(`[warn] [codex] ${cp} does not enable [features] hooks = true — run init`);

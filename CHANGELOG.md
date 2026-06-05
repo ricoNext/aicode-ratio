@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- 支持 Codex：`acr init --codex` 会安装项目级 `.codex/hooks.json` PostToolUse hook、复制 hook 脚本到 `.codex/hooks/`，并启用 `.codex/config.toml` hooks。
+
 ## 0.1.3 - 2026-05-08
 
 ### Fixed
