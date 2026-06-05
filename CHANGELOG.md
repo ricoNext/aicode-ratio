@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- 修复 CLI `-V` 仍显示旧版本的问题，改为从 `package.json` 读取当前包版本。
+
 ## 0.2.0
 
 ### Minor Changes
