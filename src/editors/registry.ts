@@ -1,10 +1,17 @@
 import { claudeCodeAdapter } from './claude-code-adapter.js';
+import { codexAdapter } from './codex-adapter.js';
 import { cursorAdapter } from './cursor-adapter.js';
 import { codeBuddyAdapter } from './codebuddy-adapter.js';
 import { qoderAdapter } from './qoder-adapter.js';
 import type { EditorAdapter } from './types.js';
 
-const adapters: EditorAdapter[] = [cursorAdapter, codeBuddyAdapter, claudeCodeAdapter, qoderAdapter];
+const adapters: EditorAdapter[] = [
+  cursorAdapter,
+  codeBuddyAdapter,
+  claudeCodeAdapter,
+  qoderAdapter,
+  codexAdapter,
+];
 
 const byId: Map<string, EditorAdapter> = new Map(adapters.map((a) => [a.id, a]));
 

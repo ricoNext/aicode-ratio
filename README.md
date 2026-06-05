@@ -27,6 +27,7 @@ Supported editors (hooks) today include:
 - Claude Code  
 - CodeBuddy (IDE & CLI)  
 - Qoder (IDE & CLI)
+- Codex
 
 > Cursor supports Tab mode; other editors do not yet.
 
@@ -132,6 +133,7 @@ acr init
 | `--codebuddy` | Install CodeBuddy hooks, etc. |
 | `--claude-code` | Install Claude Code hooks, etc. |
 | `--qoder` | Install Qoder hooks, etc. |
+| `--codex` | Install Codex hooks, etc. |
 | `--codebuddyIDE` | Deprecated; same as `--codebuddy`. |
 | `-h` / `--help` | Show `init` help. |
 

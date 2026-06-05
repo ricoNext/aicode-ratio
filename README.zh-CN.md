@@ -27,6 +27,7 @@
 - Claude Code
 - CodeBuddy(IDE & CLI)
 - Qoder(IDE & CLI)
+- Codex
 
 > Cursor 支持 Tab 模式，其它编辑器暂不支持。
 
@@ -135,6 +136,7 @@ acr init
 | `--codebuddy` | 安装 CodeBuddy 的 Hooks 等 |
 | `--claude-code` | 安装 Claude Code 的 Hooks 等 |
 | `--qoder` | 安装 Qoder 的 Hooks 等 |
+| `--codex` | 安装 Codex 的 Hooks 等 |
 | `--codebuddyIDE` | 已弃用，效果与 `--codebuddy` 相同 |
 | `-h` / `--help` | 显示该子命令的帮助信息 |
 
@@ -297,4 +299,3 @@ pnpm dlx aicode-ratio report \
 - 审阅 diff 后 **提交并推送**，再 **`git tag v<版本>`** 且 **`git push origin v<版本>`**，由 **`.github/workflows/publish-npm.yml`** 触发 **npm publish**。
 
 本仓库开发与 CI：`pnpm install`、`pnpm run build`、`pnpm test`；CI 使用 `pnpm install --frozen-lockfile`。
-

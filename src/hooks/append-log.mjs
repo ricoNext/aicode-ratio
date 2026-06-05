@@ -7,8 +7,9 @@
  *   - CodeBuddy: "codebuddy" (legacy: "codebuddyIDE") — PostToolUse Write|Edit.
  *   - Claude Code: "claude-code" — same hook JSON shape / stdout contract.
  *   - Qoder: "qoder" — PostToolUse Write|Edit（相对路径 `.qoder/hooks/`，见 Qoder 文档）。
+ *   - Codex: "codex" — PostToolUse Write|Edit（相对路径 `.codex/hooks/`）。
  *
- * Copied into `.cursor/hooks/`, `.codebuddy/hooks/`, `.claude/hooks/`, and `.qoder/hooks/` by `aicode-ratio init`.
+ * Copied into `.cursor/hooks/`, `.codebuddy/hooks/`, `.claude/hooks/`, `.qoder/hooks/`, and `.codex/hooks/` by `aicode-ratio init`.
  */
 
 import { execFileSync, execSync } from 'node:child_process';
@@ -36,8 +37,12 @@ function isQoderMode(m) {
   return m === 'qoder';
 }
 
+function isCodexMode(m) {
+  return m === 'codex';
+}
+
 function isPostToolUseCompatMode(m) {
-  return isCodeBuddyMode(m) || isClaudeCodeMode(m) || isQoderMode(m);
+  return isCodeBuddyMode(m) || isClaudeCodeMode(m) || isQoderMode(m) || isCodexMode(m);
 }
 
 function firstTruthyEnv(names) {
@@ -416,9 +421,19 @@ async function main() {
     return;
   }
 
+  if (isCodexMode(MODE)) {
+    await runPostToolUseAppendLog(raw, {
+      projectDirEnvOrder: ['CODEX_PROJECT_DIR', 'CLAUDE_PROJECT_DIR', 'CODEBUDDY_PROJECT_DIR', 'QODER_PROJECT_DIR'],
+      editor: 'codex',
+      logTag: 'codex',
+      debugLogFile: 'codex-path-field.log',
+    });
+    return;
+  }
+
   if (isCodeBuddyMode(MODE)) {
     await runPostToolUseAppendLog(raw, {
-      projectDirEnvOrder: ['CODEBUDDY_PROJECT_DIR', 'CLAUDE_PROJECT_DIR', 'QODER_PROJECT_DIR'],
+      projectDirEnvOrder: ['CODEBUDDY_PROJECT_DIR', 'CLAUDE_PROJECT_DIR', 'QODER_PROJECT_DIR', 'CODEX_PROJECT_DIR'],
       editor: 'codebuddy',
       logTag: 'codebuddy',
       debugLogFile: 'codebuddy-path-field.log',

@@ -48,7 +48,8 @@
 
 ### Added
 
-- `init` 为所选编辑器写入 **`aicode-ratio-report`** slash 命令（Markdown）：**Cursor** `.cursor/commands/`、**Claude Code** `.claude/commands/`、**CodeBuddy** `.codebuddy/commands/`、**Qoder** `.qoder/commands/`；内置当月 UTC 的 `report` 示例命令；`uninstall` 若文件仍含管理标记则删除。
+- 支持 **Codex**：`acr init --codex` 会安装 `.codex/hooks.json` PostToolUse hook、复制 hook 脚本到 `.codex/hooks/`，并在 `.codex/config.toml` 中启用 hooks。
+- `init` 为所选编辑器写入 **`aicode-ratio-report`** slash 命令（Markdown）：**Cursor** `.cursor/commands/`、**Claude Code** `.claude/commands/`、**CodeBuddy** `.codebuddy/commands/`、**Qoder** `.qoder/commands/`、**Codex** `.codex/commands/`；内置当月 UTC 的 `report` 示例命令；`uninstall` 若文件仍含管理标记则删除。
 - 日志行可选字段 **`gitUser`**（`user.name` / `user.email`）：由 `append-log` 在 hook 时刻从仓库读取；`report` 输出 **`byLogGitUser`** 与每 commit 的 **`logGitUserKeys`**（JSON `reportVersion: 2`）。
 - M0: Project skeleton, CLI stub with `init`, `report`, `uninstall`, `doctor`, `config print` commands
 - M0: GitHub Actions CI workflow

@@ -41,6 +41,11 @@ export const QODER_HOOK_ARG = 'qoder';
 /** Tab 预留，未接线 */
 export const QODER_HOOK_ARG_TAB_RESERVED = 'qoder-tab';
 
+/**
+ * append-log `argv[2]` for Codex project hooks (`.codex/hooks.json`, PostToolUse + Write|Edit).
+ */
+export const CODEX_HOOK_ARG = 'codex';
+
 export function hookCommandMatchesOurs(command: string | undefined): boolean {
   if (!command) return false;
   if (command.includes(HOOK_COMMAND_MARKER)) return true;

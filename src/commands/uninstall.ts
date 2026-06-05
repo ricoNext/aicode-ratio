@@ -59,7 +59,7 @@ export function registerUninstall(program: Command): void {
     .option('--keep-gitignore', 'Do not remove the # aicode-ratio block from .gitignore')
     .option(
       '--keep-hook-script',
-      'Do not delete hook scripts under .cursor/hooks/, .codebuddy/hooks/, .claude/hooks/, or .qoder/hooks/ (for selected editors)',
+      'Do not delete hook scripts under editor hook directories (for selected editors)',
     )
     .action(
       async (options: {
@@ -143,6 +143,14 @@ export function registerUninstall(program: Command): void {
             if (existsSync(qoderHook)) {
               unlinkSync(qoderHook);
               console.log(`Deleted ${qoderHook}`);
+              didSomething = true;
+            }
+          }
+          if (editorIdsSet.has('codex')) {
+            const codexHook = join(root, '.codex', 'hooks', HOOK_SCRIPT_NAME);
+            if (existsSync(codexHook)) {
+              unlinkSync(codexHook);
+              console.log(`Deleted ${codexHook}`);
               didSomething = true;
             }
           }

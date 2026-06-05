@@ -238,6 +238,7 @@ export function registerInit(program: Command): void {
       console.log(`     (CodeBuddy: ${join(root, '.codebuddy', 'settings.json')})`);
       console.log(`     (Claude Code: ${join(root, '.claude', 'settings.json')})`);
       console.log(`     (Qoder: ${join(root, '.qoder', 'settings.json')})`);
+      console.log(`     (Codex: ${join(root, '.codex', 'hooks.json')})`);
       console.log('  2. Run: pnpm dlx aicode-ratio doctor');
       console.log(
         `  3. See ${CONFIG_FILENAME} for teamMode / logPath; trigger an agent edit to create the log.`,

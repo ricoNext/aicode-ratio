@@ -19,7 +19,7 @@ describe('editor registry', () => {
   });
 
   it('lists built-in adapters', () => {
-    expect(registeredEditorIds()).toEqual(['cursor', 'codebuddy', 'claude-code', 'qoder']);
+    expect(registeredEditorIds()).toEqual(['cursor', 'codebuddy', 'claude-code', 'qoder', 'codex']);
   });
 
   it('normalizes legacy codebuddyIDE id when resolving editors', () => {
